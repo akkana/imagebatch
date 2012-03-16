@@ -1,0 +1,22 @@
+#! /bin/csh -f
+
+# From an image directory, make a web page.
+
+set pix = `find . -name '*[^T].jpg' | sort`
+echo pix is $pix
+
+chmod -R u+w .
+#rm -f *T.jpg
+exiftran -a -i $pix
+jhead -dt -norot $pix
+#mkpixlist $pix >showpix.cgi
+#chmod 755 showpix.cgi
+mkthumb -size 200 $pix
+mkphplist $pix >index.php
+#tblimages -p -a $pix >index.html
+#wwwis index.html
+#tblimages *T.jpg >static.html
+#wwwis static.html
+#rm -f index.html~ static.html~
+
+

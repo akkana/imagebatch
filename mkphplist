@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+# mkphplist: find all non-thumbnail images under the current directory,
+# and generate a showpix.php with the appropriate image list.
+# Copyright 2004 by Akkana Peck. 
+# You may use and distribute this under the GPL.
+
+import sys, os
+
+print "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">"
+
+print "\n<?php"
+print "  $title = \"Images\";"
+print "  $preamble = \"\";"
+print "  $pixlist = array("
+
+# Try to get an image's size. Return width, height as strings.
+def getthumbsize(imgname) :
+    try :
+        # First, get the thumbnail name
+        parts = os.path.splitext(imgname)
+        fp = os.popen("identify " + parts[0] + "T" + parts[1])
+        s = fp.readline()
+        fp.close()
+        if not s :
+            return 0, 0
+        sizes = s.split()[2].split("x")
+        return sizes[0], sizes[1]
+
+    except :
+        return None, None
+
+def mkline(imgname) :
+    imgname = imgname.strip()
+    if imgname[0:2] == "./" :
+        imgname = imgname[2:]
+    w, h = getthumbsize(imgname)
+    if w != 0 and h != 0 :
+        sizestr = ", " + w + ", " + h
+    else :
+        sizestr = ""
+    print "    array (\"" + imgname + "\", \"\"" + sizestr + "),"
+
+# Find the files to use
+if len(sys.argv) <= 1 :
+    fp = os.popen("find . -name \"*.jpg\" | grep -v T.jpg")
+    while 1 :
+        line = fp.readline()
+        if not line : break
+        mkline(line)
+else :
+    for fil in sys.argv[1:] :
+        mkline(fil)
+        
+
+print "  );"
+
+print 'require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");'
+print "?>"

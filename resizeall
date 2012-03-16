@@ -1,0 +1,201 @@
+#!/usr/bin/env python
+
+# resizeall: batch-resize images.
+# Copyright 2001, 2002 by Akkana Peck.
+# You may use, distribute and modify this program under the terms of the GPL.
+# Edited by Nick Hill, July 2003 to add support for spaces in filenames.
+
+#
+# TODO: ImageMagick has greatly improved its arguments,
+# and a lot of this script is no longer needed. For example:
+# - use mogrify instead of convert, no need for temp file and renaming
+# - -geometry 200x200 preserves aspect ratio oow
+# - -geometry '>200x200' preserves aspect ratio and doesn't enlarge
+#
+
+import sys, string, os, re
+# , os.path
+
+scale = .5
+doscale = 1
+dontshrink = 1
+thumbnail = 0
+dropshadow = 0
+
+# Overwrite existing files?  (If we're making new files, e.g. thumbnail mode)
+overwrite = 0
+
+# Use imageMagick, or netpbm?
+imageMagick = 1
+
+def Usage() :
+    print "Usage:", sys.argv[0], "[-magick|nomagick] [-nodrop] [-force] [-size|-scale size|scale]"
+    sys.exit(1)
+
+# Are we in thumbnail mode?
+if os.path.basename(sys.argv[0])[0:7] == "mkthumb" :
+    thumbnail = 1
+    dropshadow = 1
+    doscale = 0
+    scale = 140
+
+if len(sys.argv) <= 1 :
+    Usage()
+
+argp = 1
+while argp < len(sys.argv) and sys.argv[argp][0:1] == "-" :
+    if sys.argv[argp] == "-scale" :
+        doscale = 1
+        scale = float(sys.argv[argp+1])
+        print "New scale will be", scale
+        argp = argp + 2
+
+    elif sys.argv[argp] == "-size" :
+        doscale = 0
+        scale = int(sys.argv[argp+1])
+        print "New size will be", scale
+        argp = argp + 2
+    elif sys.argv[argp] == "-magick" :
+        imageMagick = 1
+        argp = argp + 1
+
+    elif sys.argv[argp] == "-nomagick" :
+        imageMagick = 0
+        argp = argp + 1
+
+    elif sys.argv[argp] == "-nodrop" :
+        dropshadow = 0
+        argp = argp + 1
+
+    elif sys.argv[argp] == "-force" :
+        overwrite = 1
+        argp = argp + 1
+
+    else :
+        Usage()
+
+for argp in range(argp, len(sys.argv)) :
+    fil = sys.argv[argp]
+    p = re.compile(' ')
+    fil = p.sub('\ ', fil)
+
+    # Set up filenames
+    period = string.rfind(fil, ".")
+    if (period < 0) :
+        print fil, "has no extension!"
+        continue
+    if thumbnail :
+        tmpfil = fil[0:period] + "T" + fil[period:]
+        print "tmpfile:", tmpfil
+        newfil = 0
+    else :
+        newfil = fil
+        tmpfil = fil + ".temp"
+
+    # See if we're in newfil mode and it's already there
+    if not overwrite and newfil == 0 and os.access(tmpfil, os.R_OK) :
+        print tmpfil, "already exists: skipping"
+        continue
+
+    # netpbm, scaling
+    # Thanks to Mojo for pointing me to djpeg and pnmscale!
+    if (not imageMagick) and doscale :
+        status = os.system("djpeg " + fil + \
+                         " | pnmscale -xscale .5 -yscale .5 | cjpeg > " \
+                           + tmpfil)
+        if status != 0 or os.path.getsize(fil) :
+	    os.remove(tmpfil)
+        elif newfil != 0 :
+            os.rename(tmpfil, newfil)
+
+        continue
+
+    # For any of the other modes, we need to know the file size.
+    fp = os.popen("imgsize " + fil)
+    oldsize = fp.readline()
+    fp.close()
+    sw = string.split(oldsize, " ")
+    if len(sw) < 3 or sw[-2] != "x" :
+        print "Problem parsing imgsize: returned", sw
+        continue
+    sx = int(sw[-3])
+    sy = int(sw[-1])
+    print fil, ":", sx, "x", sy,
+
+    if imageMagick and doscale :
+        print ""
+        newsx = int(sx * scale)
+        newsy = int(sy * scale)
+        geom = `newsx` + "x" + `newsy`
+        if sx > sy :
+            max = sx
+        else :
+            max = sy
+
+    # Else not image magick or not doscale
+    elif sx > sy :
+        print " (horizontal)"
+        if imageMagick :
+            newsy = int(sy * scale / sx)
+            geom = `scale` + "x" + `newsy`
+	else :
+            flag = "-xsize"
+	max = sx
+    else :
+        print " (vertical)"
+        if imageMagick :
+            newsx = int(sx * scale / sy)
+            geom = `newsx` + "x" + `scale`
+	else :
+            flag = "-ysize"
+	max = sy
+
+    if dontshrink and (scale > max) :
+        print " (Already smaller than scale.)"
+        continue
+
+    # Now finally build and execute the command
+    if imageMagick :
+        # For reasons I don't understand and man convert doesn't explain,
+        # in the doscale case we have to use -scale (which takes twice
+        # as long as -size) because -size gives the wrong answer.
+        # It seems that -size can only resize by clean multiples of image size,
+        # whereas -scale can go to any size?
+        flag = "-scale"
+        print "Running: convert -quality 83 -scale " + geom + " " + fil + " " + tmpfil
+        # Add -quality nn if desired -- should add that as a flag.
+        status = os.system("convert -quality 83 -scale " + geom + " " \
+                           + fil + " " + tmpfil)
+        status = 0
+    else :
+        status = os.system("djpeg " + fil + " | pnmscale " + flag \
+                           + " " + scale + " | cjpeg > " + tmpfil)
+
+    # Clean up if the command was successful
+    if status == 0 :
+        if newfil != 0:
+            print "Renaming", tmpfil, "to", newfil
+            os.rename(tmpfil, newfil)
+
+        # Add an optional dropshadow:
+        if dropshadow :
+            if newfil == 0 :
+                newfil = tmpfil
+            thumbfil = "thumb" + fil[period:]
+            print "Making dropshadow ... thumb file is", thumbfil
+            status = os.system("convert -depth 8 -threshold -1 -negate " \
+                               + newfil \
+                               + " -bordercolor white -border 20x20 " \
+                               + "-gaussian 3x3 -shave 15x15 - " \
+                               + "| composite -gravity northwest "\
+                               + "-compose src-over " \
+                               + newfil + " - " + thumbfil)
+            if status == 0 :
+                os.rename(thumbfil, newfil)
+
+    # Otherwise go back to the original
+    else :
+        os.remove(tmpfil)
+
+    # End for loop over files
+

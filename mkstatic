@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Make a static.html file (usable from a CD)
+# from an index.html which uses my perl CGI technique.
+
+fname=""
+if [ $# -eq 0 ]; then
+  sed -e 's/showpix\....?pic=//'
+else
+  sed -e 's/showpix\....?pic=//' < $1
+fi
+

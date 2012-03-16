@@ -1,0 +1,11 @@
+#! /bin/csh -f
+
+# From an image directory, make a web page of thumbnails
+# which can be loaded in a browser and then printed out.
+
+chmod -R u+w .
+mkdir thumbs
+mkthumbnail -f -r -dir thumbs
+tblimages -9 -r >all.html
+ls -l all.html
+

@@ -1,0 +1,78 @@
+/* Gallery CSS adapted from http://www.brunildo.org/test/ImgThumbIBL3.html
+ * and http://archivist.incutio.com/viewlist/css-discuss/84544
+ */
+body {
+  margin: 1em;
+  padding: 0;
+}
+
+.thumbwrap {
+	border: 1px solid #999;
+	padding: 1em 8px 0 8px;
+	background-color: #efe;
+	margin: 0;
+}
+
+/* Gallery can use either ul/li (recommended in general)
+ * or tables (for better layout in non-CSS browsers)
+ * and should look the same either way.
+ * But it doesn't work in IE6, and confuses IE8, so comment it out:
+table.thumbwrap tr, table.thumbwrap tbody {
+    display: inline; margin: 0; padding: 0;
+}
+ */
+
+.thumbwrap>li, table.thumbwrap td  {
+	display: -moz-inline-box;  /* for moz < 1.9 */
+	display: inline-block;
+	/*\*/ vertical-align: top; /**/
+	margin: 0 5px 12px 5px;
+	border: 2px solid #bbb;
+	padding: 0;
+}
+.thumbwrap>li:hover, table.thumbwrap td:hover {
+	border: 2px solid green;
+}
+.thumbwrap>li>a {
+	display: block;
+	text-decoration: none;
+	color: #000;
+	background-color: white;
+	cursor: pointer;
+	padding-top: 13px;
+}
+/* Moz: NO border qui altrimenti difficolta' con width,
+ * table altrimenti problemi a text resize (risolubili con refresh)
+ */
+.thumbwrap>li>a, table.thumbwrap td>a {
+	/*\*/ display: table; /**/
+	width: 219px;
+	text-align: center;
+}
+.thumbwrap img {
+	vertical-align: bottom;
+}
+.thumbwrap>li>a:hover, table.thumbwrap td>a:hover {
+	background-color: #ffe;
+}
+.thumbwrap .caption {
+	display: block;
+	padding: .3em 5px;
+	font-size: .9em;
+	line-height: 1.1em;
+	w\idth: 209px;  /* Moz, IE6 */
+}
+/* top ib e hover Op < 9.5 */
+@media all and (min-width: 0px) {
+	html:first-child .thumbwrap li a {
+		display: inline-block;
+	}
+	/* older, Op 8 */
+	html:first-child .thumbwrap li, html:first-child .thumbwrap li a {
+		vertical-align: top;
+	}
+	/* extra shrink */
+	html:first-child .thumbwrap {
+		display: inline-block; /* non deve avere margin */
+	}
+}

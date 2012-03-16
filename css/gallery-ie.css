@@ -1,0 +1,14 @@
+/* Gallery CSS from http://www.brunildo.org/test/ImgThumbIBL3.html
+ * and http://archivist.incutio.com/viewlist/css-discuss/84544
+ * ... IE-specific code, has to be in a separate file, sigh.
+ */
+.thumbwrap li {
+	width: 201px;
+	w\idth: 199px;
+	display: inline;
+}
+.thumbwrap {
+	_height: 0;
+	zoom: 1;
+	display: inline;
+}

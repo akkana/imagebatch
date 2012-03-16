@@ -1,0 +1,199 @@
+<html>
+<head>
+<title>Image Batch Processing</title>
+<style type="text/css">
+  dt { font-weight: bold; }
+  /* Display nested dt and dd on the same line */
+  dl dl dt { display: inline; float: left; clear: left; width: 3.2em; }
+</style>
+</head>
+
+<body>
+
+<h1>Image Batch Processing</h1>
+
+<i><a href="http://shallowsky.com/mailme.html">...Akkana</a></i>
+
+<p>
+These scripts make it easy to upload large numbers of images
+(from a scanner or digital camera, for example) and turn them
+into web pages.  They run on Unix systems (other restrictions as noted)
+though it might not be too hard to port them to other operating systems.
+They're written in a motley collection of csh, perl and python.
+You may freely use and modify these programs under the
+<a href="http://www.gnu.org/">GNU Public License</a>.
+
+<p>
+<b>Download</b> the whole collection:
+<a href="imagebatch-1.4.tar.gz">imagebatch-1.4.tar.gz</a>.
+
+<p>
+<i>Warning!</i> These are not really set up as a nice usable package.
+I'm under the impression that since there are a gazillion
+packages to do this, nobody's actually going to want mine except
+maybe as a learning tool or a starting point to write your own.
+If you actually are trying to use these scripts and having trouble
+figuring them out, please let me know.  I'll be happy to (1) answer
+any questions, (2) write some better documentation or (3) send you
+the latest versions (the versions here may not always be the
+latest-and-greatest and may have some bugs that I've fixed on
+my local machine).
+
+<p>
+<i>Requirements:</i> You should have ImageMagick (for scaling and thumbnail
+drop shadows), libjpeg-progs (for jpegtran and jpegexiforient) and
+jhead (for cleaning up unwanted EXIF like embedded thumbnails).
+
+<p>
+<a href="http://shallowsky.com/images/escalante/grosvenor">Here's a sample page</a>.
+
+<h2>How to use</h2>
+<p>
+Here's a typical workflow for me, from photo upload to web page:
+
+<ol>
+<li>After uploading images, I view and catalog them with my
+    <a href="http://shallowsky.com/software/pho/">Pho image viewer</a>,
+    (separate, not part of this package)
+    marking the ones that I want to put on a web page.
+<li>Copy those images to another directory somewhere (leaving the
+    originals in place) and cd there.
+<li>Use <i>rotateall</i> to rotate anything that needs it,
+    e.g. <i>rotateall -right img004.jpg img007.jpg -left img011.jpg</i>
+<li>Resize everything to a reasonable size for the web, e.g.
+    <i>resizeall -size 600 *.jpg</i>
+<li>Run <i>mkwebphotos</i>, which does the rest.
+</ol>
+
+<p>
+The latest version of mkwebphotos creates a PHP file that handles the
+thumbnail page and all the individual image pages. If you don't want to
+use PHP, uncomment the tblimages line in <i>mkwebphotos</i> and it will
+make an index.html page.
+
+<h2>Descriptions of the individual scripts</h2>
+
+<dl>
+
+<dt>resizeall <i>(python)</i>
+<dd>Rescale images to a smaller size (can also make thumbnails).
+    It requires the imgsize script.
+
+<dt>mkthumb <i>(symbolic link to resizeall)</i>
+<dd>If resizeall is called as "mkthumb", it will automatically put itself
+    in thumbnail mode, and (unless told otherwise) will generate drop
+    shadows. Just make a link from resizeall to mkthumb.
+
+<dt>rotateall <i>(csh)</i>
+<dd>Rotate all the images, -left -cw -right -ccw -180 or -0.
+    You can switch directions in midstream, e.g.
+    <code>rotateall -cw foo.jpg bar.jpg -ccw baz.jpg</code>
+    <br>
+    If you have jpegtran installed, it will use that for lossless
+    jpeg rotation.
+    <br>
+    It will remove all EXIF rotation information. To remove the EXIF
+    rotation information without actually rotating anything, use
+    <code>rotateall -0</code>
+
+<dt>mkphplist <i>(python)</i>
+<dd>Find images under the current directory and generate
+    a file suitable for using <i>showpix.php</i>.
+    This is faster than the Perl CGI, and more self contained,
+    assuming you have PHP available.  I'm gradually migrating.
+
+<dt>mkwebphotos <i>(perl)</i>
+<dd>Given a directory hierarchy containing images already sized,
+    make thumbnails, then showpix.cgi, index.html (using showpix.cgi)
+    and static.html (which refers to the images alone -- good for
+    when you back up the web page to a CD and send it to your parents).
+
+<dt>thumbpage <i>(perl)</i>
+<dd>Make a big HTML page of thumbnails suitable for printing from a browser.
+    Useful if you want to keep a printed archive of your photo collection.
+
+<dt>tblimages <i>(csh)</i>
+<dd>Take a bunch of thumbnail images (assuming that full-sized
+    images are in the same directory) and make a web page
+    out of them. Lots of options:
+    <dl>
+    <dt>-t <dd>uses tables instead of fancy
+        CSS lists (4 wide by default, but you can pass -1 through -9 to
+    change that),
+    <dt>-p <dd>makes it link to PHP pages instead of just the raw images,
+    <dt>-c <dd>links to CGI pages instead of PHP or raw images,
+    <dt>-r <dd>makes it recurse through subdirectories looking for images,
+    <dt>-b <dd>puts a border on the thumbnails (if you're not using dropshadows)
+    <dt>-n <dd>doesn't add HTML headers (in case you're making several
+               snippets to paste together),
+    <dt>-a <dd>adds annotation (see thumbpage to see how that works).
+    </dl>
+
+<dt>filestolower <i>(csh)</i>
+<dd>csh: Convert filenames to lower case -- Windows image processing
+    programs are forever converting my lower-case names to upper case.
+
+<dt>imgsize <i>(Perl)</i>
+<dd>Print the size of an image file.
+    Based on code adapted from the excellent
+    <a href="http://bloodyeck.com/wwwis/">wwwis</a>
+    program,
+    which is indispensable for setting width and height tags
+    in html pages.
+
+<dt>mkstatic <i>(sh)</i>
+<dd>
+Make a static.html page from index.html (e.g. to put on a CD or some
+other medium that can't run PHP or CGI).
+
+<dt>gallerypage-base.php <i>(PHP)</i>
+<dd>
+The PHP that does the work of generating the web pages.
+Put this in a subdirectory of your web site called software, or
+else change the path that <i>mkphplist </i> uses for its <i>require</i>.
+
+<dt>css/gallery.css
+<dt>css/gallerypic.css
+<dt>css/gallery-ie.css
+<dd>
+CSS files that make the fancy list-based gallery pages work.
+I'm indebted to <a href="http://www.brunildo.org/test/ImgThumbIBL3.html">this
+brunildo example</a> and the related
+<a href="http://archivist.incutio.com/viewlist/css-discuss/84544">discussion</a>
+without which I might still be stuck on 4-column wide tables (like
+on this <a href="http://shallowsky.com/images/stevcrk_1_20/">sample page</a>
+for what tblimages creates with the -t option).
+
+</dl>
+
+<h2>Older files, no longer included</h2>
+
+<dt>showpix-base.php <i>(PHP)</i>
+<dd>PHP for showing individual images; unable to handle the thumbnail
+    page and generally not as flexible as the newer gallerypage-base.php.
+    The format of the image lists is the same, so if you have old
+    image list showpix.php files that worked with showpix-base.php,
+    you can probably just change the require line to use gallerypage-base.php
+    instead.
+
+<dl>
+<dt>showpix.pl <i>(perl)</i>
+<dd>CGI: Display full-sized images one by one,
+    letting you step forward and backward,
+    and allowing a short description for each image.
+    (There seems to be no way to tell apache not to execute
+    this .pl file, even with a .htaccess, so I've removed the .pl.)
+
+<dt>mkpixlist <i>(perl)</i>
+<dd>Find images under the current directory and generate
+    a file suitable for using <i>showpix.cgi</i>.
+
+</dl>
+
+<hr>
+<a href="../">Akkana's Software</a><br>
+<a href="/linux/limaging.html">Linux Imaging</a><br>
+<a href="/">Shallowsky Home</a>
+
+</body>
+</html>

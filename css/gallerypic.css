@@ -1,0 +1,47 @@
+/* Styles for individual photos shown by showpix.php,
+ * and the nav buttons used on those pages.
+ */
+
+.picnav {
+  margin: 1.2em auto 1.4em 2em;
+  padding: .3em;
+
+  /* I'd like this to be in its own area, but none of this
+   * background-setting works right.
+   *
+   * If it's display: block (per default) then the margin and
+   * padding work, but the height doesn't cover the buttons and
+   * if I try to set width all the buttons draw on top of each other.
+   *
+   * If it's display: inline, the buttons space out nicely and the
+   * background color wraps around them, but margin and padding
+   * stop working.
+   *
+  background: white;
+  height: 3em;
+  width: 7em;
+  display: inline;
+
+  outline: red solid thin;
+  */
+
+}
+
+.picnav li {
+  display: inline;
+  margin: auto 1em;
+}
+
+.picnav li a {
+  padding: .2em 1em;
+  background: #dff;
+  color: black;
+  border: 2px outset;
+  text-decoration: none;
+  font-style: italic;
+  font-weight: bold;
+}
+
+.picnav li a:hover {
+  background: #fff;
+}

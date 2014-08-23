@@ -37,7 +37,7 @@ if os.path.basename(sys.argv[0])[0:7] == "mkthumb" :
     thumbnail = 1
     dropshadow = 1
     doscale = 0
-    scale = 140
+    scale = 200
 
 if len(sys.argv) <= 1 :
     Usage()
@@ -136,16 +136,14 @@ for argp in range(argp, len(sys.argv)) :
     elif sx > sy :
         print " (horizontal)"
         if imageMagick :
-            newsy = int(sy * scale / sx)
-            geom = `scale` + "x" + `newsy`
+            geom = str(scale)
 	else :
             flag = "-xsize"
 	max = sx
     else :
         print " (vertical)"
         if imageMagick :
-            newsx = int(sx * scale / sy)
-            geom = `newsx` + "x" + `scale`
+            geom = "x" + `scale`
 	else :
             flag = "-ysize"
 	max = sy

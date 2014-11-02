@@ -7,12 +7,7 @@
 
 import sys, os
 
-print "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">"
-
-print "\n<?php"
-print "  $title = \"Images\";"
-print "  $preamble = \"\";"
-print "  $pixlist = array("
+contents = ''
 
 # Try to get an image's size. Return width, height as strings.
 def getthumbsize(imgname) :
@@ -31,6 +26,11 @@ def getthumbsize(imgname) :
         return None, None
 
 def mkline(imgname) :
+    global contents
+    if imgname in contents :
+        print "Skipping", imgname
+        return
+
     imgname = imgname.strip()
     if imgname[0:2] == "./" :
         imgname = imgname[2:]
@@ -39,21 +39,48 @@ def mkline(imgname) :
         sizestr = ", " + w + ", " + h
     else :
         sizestr = ""
-    print "    array (\"" + imgname + "\", \"\"" + sizestr + "),"
+    contents += "    array (\"" + imgname + "\", \"\"" + sizestr + "),\n"
 
-# Find the files to use
+# If the first argument doesn't have a ., or ends in .html or .php,
+# use that as the filename. Otherwise, use stdout.
+outfile = None
+if len(sys.argv) > 1 and ('.' not in sys.argv[1] or
+                          sys.argv[1].endswith('.php') or
+                          sys.argv[1].endswith('.html')) :
+    outfile = sys.argv[1]
+    sys.argv = sys.argv[1:]
+
+# Find the image files to use.
+imgfiles = []
 if len(sys.argv) <= 1 :
     fp = os.popen("find . -name \"*.jpg\" | grep -v T.jpg")
-    while 1 :
+    while True :
         line = fp.readline()
         if not line : break
-        mkline(line)
+        imgfiles.append(line)
 else :
-    for fil in sys.argv[1:] :
-        mkline(fil)
-        
+    imgfiles = sys.argv[1:]
 
-print "  );"
+# Okay, we've parsed the arguments. Start doing stuff.
+if outfile :
+    outfp = open(outfile, 'w')
+else :
+    outfp = sys.stdout
 
-print 'require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");'
-print "?>"
+contents += "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n"
+
+contents += "\n<?php\n"
+contents += "  $title = \"Images\";\n"
+contents += "  $preamble = \"\";\n"
+contents += "  $pixlist = array(\n"
+
+for fil in imgfiles :
+    mkline(fil)
+
+contents += "  );"
+
+contents += 'require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");\n'
+contents += "?>\n"
+
+print >>outfp, contents
+

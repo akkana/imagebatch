@@ -11,8 +11,11 @@ exiftran -a -i $pix
 jhead -dt -norot $pix
 #mkpixlist $pix >showpix.cgi
 #chmod 755 showpix.cgi
+
 mkthumb -size 200 $pix
-mkphplist $pix >index.php
+
+mkphplist index.php $pix
+
 #tblimages -p -a $pix >index.html
 #wwwis index.html
 #tblimages *T.jpg >static.html

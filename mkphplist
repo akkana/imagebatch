@@ -6,39 +6,66 @@
 # You may use and distribute this under the GPL.
 
 import sys, os
+import subprocess
 
 contents = ''
 
-# Try to get an image's size. Return width, height as strings.
-def getthumbsize(imgname) :
-    try :
-        # First, get the thumbnail name
-        parts = os.path.splitext(imgname)
-        fp = os.popen("identify " + parts[0] + "T" + parts[1])
-        s = fp.readline()
-        fp.close()
-        if not s :
-            return 0, 0
-        sizes = s.split()[2].split("x")
-        return sizes[0], sizes[1]
+# Try to get an image's and thumbnail size.
+# Return thumbwidth, thumbheight, width, height as strings.
+def getthumbsize(imgname):
+    try:
+        # Try for the real image size first:
+        proc = subprocess.Popen(["identify", imgname],
+                                shell=False, stdout=subprocess.PIPE)
+        s = proc.communicate()[0]
+        if s:
+            sizes = s.split()[2].split("x")
+        else:
+            sizes = [0, 0]
 
-    except :
+        # Now the thumbnail size:
+        parts = os.path.splitext(imgname)
+        proc = subprocess.Popen(["identify", parts[0] + "T" + parts[1]],
+                                shell=False, stdout=subprocess.PIPE)
+        s = proc.communicate()[0]
+        if s:
+            thumbsizes = s.split()[2].split("x")
+        else:
+            thumbsizes = [0, 0]
+
+        # # Get the thumbnail name
+        # parts = os.path.splitext(imgname)
+        # fp = os.popen("identify " + parts[0] + "T" + parts[1])
+        # s = fp.readline()
+        # fp.close()
+        # if not s:
+        #     return 0, 0
+        # sizes = s.split()[2].split("x")
+
+        return thumbsizes[0], thumbsizes[1], sizes[0], sizes[1]
+
+    except Exception, e:
+        raise e
         return None, None
 
-def mkline(imgname) :
+def mkline(imgname):
     global contents
-    if imgname in contents :
+
+    imgname = imgname.strip()
+    if imgname[0:2] == "./":
+        imgname = imgname[2:]
+
+    if '"%s"' % imgname in contents:
         print "Skipping", imgname
         return
 
-    imgname = imgname.strip()
-    if imgname[0:2] == "./" :
-        imgname = imgname[2:]
-    w, h = getthumbsize(imgname)
-    if w != 0 and h != 0 :
-        sizestr = ", " + w + ", " + h
-    else :
+    tw, th, w, h = getthumbsize(imgname)
+    if tw != 0 and th != 0:
+        sizestr = ", " + tw + ", " + th
+    else:
         sizestr = ""
+    if w != 0 and h != 0:
+        sizestr += ", " + w + ", " + h
     contents += "    array (\"" + imgname + "\", \"\"" + sizestr + "),\n"
 
 # If the first argument doesn't have a ., or ends in .html or .php,
@@ -46,41 +73,71 @@ def mkline(imgname) :
 outfile = None
 if len(sys.argv) > 1 and ('.' not in sys.argv[1] or
                           sys.argv[1].endswith('.php') or
-                          sys.argv[1].endswith('.html')) :
+                          sys.argv[1].endswith('.html')):
     outfile = sys.argv[1]
     sys.argv = sys.argv[1:]
 
 # Find the image files to use.
 imgfiles = []
-if len(sys.argv) <= 1 :
+if len(sys.argv) <= 1:
     fp = os.popen("find . -name \"*.jpg\" | grep -v T.jpg")
-    while True :
+    while True:
         line = fp.readline()
-        if not line : break
+        if not line: break
         imgfiles.append(line)
-else :
+else:
     imgfiles = sys.argv[1:]
 
-# Okay, we've parsed the arguments. Start doing stuff.
-if outfile :
+# Okay, we've parsed the arguments.
+# Are we modifying an existing file?
+if outfile:
+    try:
+        infp = open(outfile)
+    except:
+        infp = None
+
+if infp:
+    seen_pixlist = False
+    for line in infp:
+        strline = line.strip()
+
+        # Is this the end of the old pixlist?
+        if seen_pixlist and strline == ');':
+            break
+        if strline == '$pixlist = array(':
+            seen_pixlist = True
+
+        contents += line
+
+    contents += '\n    "New images added:",\n'
+    infp.close()
+
+else:
+    contents += """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<?php
+$title = \"Images\";
+$preamble = "";
+$pixlist = array(
+"""
+
+# Outputting to a file, or to stdout?
+if outfile:
     outfp = open(outfile, 'w')
-else :
+
+else:
     outfp = sys.stdout
 
-contents += "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n"
-
-contents += "\n<?php\n"
-contents += "  $title = \"Images\";\n"
-contents += "  $preamble = \"\";\n"
-contents += "  $pixlist = array(\n"
-
-for fil in imgfiles :
+for fil in imgfiles:
     mkline(fil)
 
-contents += "  );"
 
-contents += 'require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");\n'
-contents += "?>\n"
+# The footer, which better not have been modified in the old file.
+contents += """  );
+
+require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
+?>
+"""
 
 print >>outfp, contents
 

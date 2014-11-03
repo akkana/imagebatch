@@ -54,7 +54,7 @@ def have_image(imgname):
     for p in pixlist:
         if type(p) is not str:
             if p[0] == imgname:
-                return True
+                return p
     return False
 
 def mkline(imgname):
@@ -64,9 +64,14 @@ def mkline(imgname):
     if imgname[0:2] == "./":
         imgname = imgname[2:]
 
-    #if '"%s"' % imgname in contents:
-    if have_image(imgname):
-        print "Skipping", imgname
+    img = have_image(imgname)
+    if img:
+        tw, th, w, h = getthumbsize(imgname)
+        if [tw, th, w, h] != img[2:]:
+            print "Need to correct sizes:", tw, th, w, h, "vs", img[2:]
+            img[2:] = [tw, th, w, h]
+        else:
+            print "Skipping", imgname
         return
 
     tw, th, w, h = getthumbsize(imgname)

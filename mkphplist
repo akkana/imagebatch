@@ -7,8 +7,10 @@
 
 import sys, os
 import subprocess
+import re
 
 contents = ''
+pixlist = []
 
 # Try to get an image's and thumbnail size.
 # Return thumbwidth, thumbheight, width, height as strings.
@@ -48,6 +50,13 @@ def getthumbsize(imgname):
         raise e
         return None, None
 
+def have_image(imgname):
+    for p in pixlist:
+        if type(p) is not str:
+            if p[0] == imgname:
+                return True
+    return False
+
 def mkline(imgname):
     global contents
 
@@ -55,18 +64,14 @@ def mkline(imgname):
     if imgname[0:2] == "./":
         imgname = imgname[2:]
 
-    if '"%s"' % imgname in contents:
+    #if '"%s"' % imgname in contents:
+    if have_image(imgname):
         print "Skipping", imgname
         return
 
     tw, th, w, h = getthumbsize(imgname)
-    if tw != 0 and th != 0:
-        sizestr = ", " + tw + ", " + th
-    else:
-        sizestr = ""
-    if w != 0 and h != 0:
-        sizestr += ", " + w + ", " + h
-    contents += "    array (\"" + imgname + "\", \"\"" + sizestr + "),\n"
+
+    pixlist.append([imgname, "", tw, th, w, h])
 
 # If the first argument doesn't have a ., or ends in .html or .php,
 # use that as the filename. Otherwise, use stdout.
@@ -102,14 +107,34 @@ if infp:
         strline = line.strip()
 
         # Is this the end of the old pixlist?
-        if seen_pixlist and strline == ');':
-            break
+        if seen_pixlist:
+            if strline == ');':
+                break
+            # Try to match the name and the description,
+            # followed by up to four optional integers.
+            # We have to include the commas and spaces preceeding each number
+            # as a match group in order to make it optional ...
+            # so we'll ignore those groups if we get them.
+            # Any numbers not matched will show up in match.groups() as None.
+            match = re.match('array *\("(.*\..*)", *"(.*)"' \
+                                 + '(, *)?([0-9]+)?' * 4,
+                             strline)
+            if match:
+                g = match.groups()
+                pixlist.append([g[0], g[1], g[3], g[5], g[7], g[9]])
+            else:
+                pixlist.append(strline)
+
+            continue
+
+        # We haven't seen the pixlist yet.
+        contents += line
+
         if strline == '$pixlist = array(':
             seen_pixlist = True
 
-        contents += line
-
-    contents += '\n    "New images added:",\n'
+    #contents += '\n    "New images added:",\n'
+    pixlist.append("New images added:");
     infp.close()
 
 else:
@@ -131,6 +156,15 @@ else:
 for fil in imgfiles:
     mkline(fil)
 
+for p in pixlist:
+    if type(p) is str:
+        contents += '\n    ' + p + '\n'
+    else:
+        contents += '    array ("%s", "%s"' % (p[0], p[1])
+        for n in p[2:]:
+            if n:
+                contents += ', %s' % n
+        contents += '),\n'
 
 # The footer, which better not have been modified in the old file.
 contents += """  );

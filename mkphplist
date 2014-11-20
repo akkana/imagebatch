@@ -127,7 +127,7 @@ if infp:
             if match:
                 g = match.groups()
                 pixlist.append([g[0], g[1], g[3], g[5], g[7], g[9]])
-            else:
+            elif strline:
                 pixlist.append(strline)
 
             continue
@@ -138,9 +138,9 @@ if infp:
         if strline == '$pixlist = array(':
             seen_pixlist = True
 
-    #contents += '\n    "New images added:",\n'
-    pixlist.append("New images added:");
     infp.close()
+
+    pixlist.append('"New images added:",');
 
 else:
     contents += """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
@@ -153,6 +153,10 @@ $pixlist = array(
 
 # Outputting to a file, or to stdout?
 if outfile:
+    # Make a backup first:
+    bakfile = outfile + ".bak"
+    if os.path.exists(bakfile):
+        os.rename(outfile, bakfile)
     outfp = open(outfile, 'w')
 
 else:

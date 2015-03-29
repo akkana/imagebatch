@@ -9,12 +9,11 @@ import sys, os
 import subprocess
 import re
 
-contents = ''
-pixlist = []
-
 # Try to get an image's and thumbnail size.
 # Return thumbwidth, thumbheight, width, height as strings.
-def getthumbsize(imgname):
+def getthumbsize(imgname, root=None):
+    if root:
+        imgname = os.path.join(root, imgname)
     try:
         # Try for the real image size first:
         proc = subprocess.Popen(["identify", imgname],
@@ -50,23 +49,21 @@ def getthumbsize(imgname):
         raise e
         return None, None
 
-def have_image(imgname):
+def have_image(imgname, pixlist):
     for p in pixlist:
         if type(p) is not str:
             if p[0] == imgname:
                 return p
     return False
 
-def mkline(imgname):
-    global contents
-
+def mkline(imgname, pixlist, root=None):
     imgname = imgname.strip()
     if imgname[0:2] == "./":
         imgname = imgname[2:]
 
-    img = have_image(imgname)
+    img = have_image(imgname, pixlist)
     if img:
-        tw, th, w, h = getthumbsize(imgname)
+        tw, th, w, h = getthumbsize(imgname, root)
         if [tw, th, w, h] != img[2:]:
             print "Need to correct sizes:", tw, th, w, h, "vs", img[2:]
             img[2:] = [tw, th, w, h]
@@ -74,113 +71,138 @@ def mkline(imgname):
             print "Skipping", imgname
         return
 
-    tw, th, w, h = getthumbsize(imgname)
+    tw, th, w, h = getthumbsize(imgname, root)
 
     pixlist.append([imgname, "", tw, th, w, h])
 
-# If the first argument doesn't have a ., or ends in .html or .php,
-# use that as the filename. Otherwise, use stdout.
-outfile = None
-if len(sys.argv) > 1 and ('.' not in sys.argv[1] or
-                          sys.argv[1].endswith('.php') or
-                          sys.argv[1].endswith('.html')):
-    outfile = sys.argv[1]
-    sys.argv = sys.argv[1:]
+def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
+    if not imgfiles:
+        return ''
 
-# Find the image files to use.
-imgfiles = []
-if len(sys.argv) <= 1:
-    fp = os.popen("find . -name \"*.jpg\" | grep -v T.jpg")
-    while True:
-        line = fp.readline()
-        if not line: break
-        imgfiles.append(line)
-else:
-    imgfiles = sys.argv[1:]
+    contents = ''
+    pixlist = []
 
-# Okay, we've parsed the arguments.
-# Are we modifying an existing file?
-if outfile:
-    try:
-        infp = open(outfile)
-    except:
+    if not title:
+        title = "Images"
+    contents = ""
+
+    # Are we modifying an existing file?
+    if outfile:
+        try:
+            infp = open(outfile)
+        except:
+            infp = None
+    else:
         infp = None
 
-if infp:
-    seen_pixlist = False
-    for line in infp:
-        strline = line.strip()
+    if infp:
+        seen_pixlist = False
+        for line in infp:
+            strline = line.strip()
 
-        # Is this the end of the old pixlist?
-        if seen_pixlist:
-            if strline == ');':
-                break
-            # Try to match the name and the description,
-            # followed by up to four optional integers.
-            # We have to include the commas and spaces preceeding each number
-            # as a match group in order to make it optional ...
-            # so we'll ignore those groups if we get them.
-            # Any numbers not matched will show up in match.groups() as None.
-            match = re.match('array *\("(.*\..*)", *"(.*)"' \
-                                 + '(, *)?([0-9]+)?' * 4,
-                             strline)
-            if match:
-                g = match.groups()
-                pixlist.append([g[0], g[1], g[3], g[5], g[7], g[9]])
-            elif strline:
-                pixlist.append(strline)
+            # Is this the end of the old pixlist?
+            if seen_pixlist:
+                if strline == ');':
+                    break
+                # Try to match the name and the description,
+                # followed by up to four optional integers.
+                # We have to include the commas and spaces preceeding each
+                # number as a match group in order to make it optional ...
+                # so we'll ignore those groups if we get them.
+                # Numbers not matched will show up in match.groups() as None.
+                match = re.match('array *\("(.*\..*)", *"(.*)"' \
+                                     + '(, *)?([0-9]+)?' * 4,
+                                 strline)
+                if match:
+                    g = match.groups()
+                    pixlist.append([g[0], g[1], g[3], g[5], g[7], g[9]])
+                elif strline:
+                    pixlist.append(strline)
 
-            continue
+                continue
 
-        # We haven't seen the pixlist yet.
-        contents += line
+            # We haven't seen the pixlist yet.
+            contents += line
 
-        if strline == '$pixlist = array(':
-            seen_pixlist = True
+            if strline == '$pixlist = array(':
+                seen_pixlist = True
 
-    infp.close()
+        infp.close()
 
-    pixlist.append('"New images added:",');
+        pixlist.append('"New images added:",');
 
-else:
-    contents += """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+    else:
+        contents += """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 
 <?php
-$title = \"Images\";
+$title = \"%s\";
 $preamble = "";
 $pixlist = array(
-"""
+""" % title
 
-# Outputting to a file, or to stdout?
-if outfile:
-    # Make a backup first:
-    bakfile = outfile + ".bak"
-    if os.path.exists(bakfile):
-        os.rename(outfile, bakfile)
-    outfp = open(outfile, 'w')
+    # Outputting to a file, or to stdout?
+    if outfile:
+        # Make a backup first:
+        bakfile = outfile + ".bak"
+        if os.path.exists(bakfile):
+            os.rename(outfile, bakfile)
 
-else:
-    outfp = sys.stdout
+    for fil in imgfiles:
+        mkline(fil, pixlist, root)
 
-for fil in imgfiles:
-    mkline(fil)
+    for p in pixlist:
+        if type(p) is str:
+            contents += '\n    ' + p + '\n'
+        else:
+            if tags and not p[1]:
+                tlist = []
+                for t in tags.keys():
+                    if p[0] in tags[t]:
+                        tlist.append(t)
+                p[1] = ', '.join(tlist)
+            contents += '    array ("%s", "%s"' % (p[0], p[1])
+            for n in p[2:]:
+                if n:
+                    contents += ', %s' % n
+            contents += '),\n'
 
-for p in pixlist:
-    if type(p) is str:
-        contents += '\n    ' + p + '\n'
-    else:
-        contents += '    array ("%s", "%s"' % (p[0], p[1])
-        for n in p[2:]:
-            if n:
-                contents += ', %s' % n
-        contents += '),\n'
-
-# The footer, which better not have been modified in the old file.
-contents += """  );
+    # The footer, which better not have been modified in the old file.
+    contents += """  );
 
 require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
 ?>
 """
 
-print >>outfp, contents
+    return contents
+
+
+if __name__ == '__main__':
+    # If the first argument doesn't have a ., or ends in .html or .php,
+    # use that as the filename. Otherwise, use stdout.
+    outfile = None
+    if len(sys.argv) > 1 and ('.' not in sys.argv[1] or
+                              sys.argv[1].endswith('.php') or
+                              sys.argv[1].endswith('.html')):
+        outfile = sys.argv[1]
+        sys.argv = sys.argv[1:]
+
+    # Find the image files to use.
+    imgfiles = []
+    if len(sys.argv) <= 1:
+        fp = os.popen("find . -name \"*.jpg\" | grep -v T.jpg")
+        while True:
+            line = fp.readline()
+            if not line: break
+            imgfiles.append(line)
+    else:
+        imgfiles = sys.argv[1:]
+
+    contents = make_php_list(imgfiles, outfile)
+
+    if outfile:
+        outfp = open(outfile, 'w')
+    else:
+        outfp = sys.stdout
+
+    print >>outfp, contents
 

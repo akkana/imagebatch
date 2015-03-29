@@ -1,25 +1,188 @@
-#! /bin/csh -f
+#!/usr/bin/env python
 
 # From an image directory, make a web page.
+# If there are images in the current directory, make a single web page;
+# if there are subdirectories, make a hierarchy of them.
 
-set pix = `find . -name '*[^T].jpg' | sort`
-echo pix is $pix
+import os, sys
+import subprocess
+from PIL import Image
 
-chmod -R u+w .
-#rm -f *T.jpg
-exiftran -a -i $pix
-jhead -dt -norot $pix
-#mkpixlist $pix >showpix.cgi
-#chmod 755 showpix.cgi
+# For importing standalone scripts as python modules:
+import imp
+imp.load_source("mkphplist",
+                os.path.join(os.path.dirname(__file__), "mkphplist"))
+import mkphplist
 
-mkthumb -size 200 $pix
+def is_image_file(f):
+    '''Does this file have an extension, and it's not a thumbnail,
+       i.e. it's not named *T.jpg?
+    '''
+    if f.endswith('.php'):
+        return False
+    lastdot = f.rfind('.')
+    if lastdot < 0:
+        return False
+    if f[lastdot-1] == 'T':
+        return False
+    return True
 
-mkphplist index.php $pix
+def get_thumb_name(f):
+    lastdot = f.rfind('.')
+    if lastdot < 0:
+        return None
+    return f[:lastdot] + 'T' + f[lastdot:]
 
-#tblimages -p -a $pix >index.html
-#wwwis index.html
-#tblimages *T.jpg >static.html
-#wwwis static.html
-#rm -f index.html~ static.html~
+def read_tag_file(f):
+    tags = {}
+    fp = open(f)
+    for line in fp:
+        if not line:
+            continue
+        if line.startswith('#'):
+            continue
+        if line.startswith('category'):
+            continue
+        if line.startswith('tag '):
+            line = line[4:]
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(':')
+        if len(parts) != 2:
+            print "malformed tag file line:", line
+            continue
+        tag = parts[0].strip()
+        tagged_files = parts[1].split(' ')
+        if not tag:
+            print "Null tag!", tag
+            continue
+        for t in tagged_files:
+            t = t.strip()
+            if not t:
+                continue
+            if tag in tags.keys():
+                tags[tag].append(t)
+            else:
+                tags[tag] = [ t ]
 
+    fp.close()
+    return tags
 
+def handle_files(root, file_list):
+    files = []
+    tags = None
+    for f in file_list:
+        if is_image_file(f):
+            files.append(f)
+        elif f == "Tags" or f == "Keywords":
+            tags = read_tag_file(os.path.join(root, f))
+
+    files.sort()
+    print root, "Real files we'll work on:", files
+
+    for f in files:
+        fpath = os.path.join(root, f)
+
+        thumb = get_thumb_name(fpath)
+        if not thumb:
+            # This shouldn't happen because it should have been weeded out.
+            print f, "doesn't have an extension, skipping"
+            continue
+
+        os.chmod(fpath, 0644)
+
+        if not os.path.exists(thumb):
+            # If we already have a thumbnail, we've probably already
+            # called exiftran and jhead, so don't call them again:
+            # they don't play well together, and calling jhead on
+            # a file that exiftran and jhead have previously been
+            # called on produces the Nonfatal Error :
+            # More than 10 date fields!  This is nuts
+            subprocess.call(["exiftran", "-a", "-i", fpath])
+            subprocess.call(["jhead", "-dt", "-norot", fpath])
+
+            print "Making thumbnail for", fpath
+            subprocess.call(["mkthumb", "-size", "200", fpath])
+
+    title = os.path.split(os.path.basename(root))[1]
+    if title.startswith('./'): title = title[2:]
+    if title == '.': title = None
+    return mkphplist.make_php_list(files, tags=tags, root=root, title=title)
+
+def handle_dir(root, d):
+    '''For a directory, make links to the subdirectories,
+       using the first thumbnail if there are any at all.
+    '''
+    imgfile = None
+    files = os.listdir(os.path.join(root, d))
+    for f in files:
+        lastdot = f.rfind('.')
+        if lastdot < 0:
+            continue
+        if f[lastdot-1] != 'T':
+            continue
+        # It's a thumbnail file!
+        imgfile = f
+        img = Image.open(os.path.join(root, d, imgfile))
+        break
+
+    if imgfile:
+        return '<li><a href="%s"><img src="%s/%s" align=left width=%d height=%d alt="[%s]"><span class="caption">%s</span></a>\n' % \
+            (d, d, imgfile, img.size[0], img.size[1], d, d)
+    else:
+        return '<li><a href="%s">%s</a>\n' % (d, d)
+
+if __name__ == '__main__':
+    for root, dirs, files in os.walk('.'):
+        # print "\n================", root, "====================="
+        # print "files", files
+        # print "dirs", dirs
+
+        if files:
+            index = handle_files(root, files)
+        else:
+            index = ''
+
+        if dirs:
+            # A directory that only contains dirs, no files directly,
+            # should be seen as a sort of table of contents.
+            title = os.path.basename(root)
+            if title == '.':
+                title = "Images"
+            dirindex = '<h1>%s</h1>\n<ul class="thumbwrap">\n' % title
+            for d in dirs:
+                dirindex += handle_dir(root, d)
+            dirindex += '</ul>\n'
+        else:
+            dirindex = ''
+
+        # print "======= DIRS ===="
+        # print dirindex
+        # print "======= images ===="
+        # print index
+        # print "========================================"
+
+        if dirindex or index:
+            outfp = open(os.path.join(root, 'index.php'), 'w')
+            if dirindex:
+                title = "Images"
+                print >>outfp, '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">'
+                print >>outfp, '''
+<head>
+<title>%s</title>
+<link rel="stylesheet" type="text/css" href="/css/gallery.css" />
+<link rel="stylesheet" type="text/css" href="/css/gallerypic.css" />
+<!--[if lt IE 9]>
+<link rel="stylesheet" type="text/css" href="/css/gallery-ie.css" />
+<![endif]-->
+<!-- put any additional stylesheets here -->
+</head>
+
+<body>''' % (title)
+                outfp.write(dirindex)
+            if index:
+                outfp.write(index)
+            outfp.close()
+        else:
+            print "Nothing to write in", root

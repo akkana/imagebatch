@@ -78,6 +78,17 @@ def handle_files(root, file_list):
         elif f == "Tags" or f == "Keywords":
             tags = read_tag_file(os.path.join(root, f))
 
+    # But wait! If there's a tags file, and if we have a tag "web",
+    # use the files in that list instead of our file list.
+    if tags and 'web' in tags:
+        print "We have a web tag. Using those files."
+        files = []
+        for f in tags['web']:
+            if os.path.exists(os.path.join(root, f)):
+                files.append(f)
+            else:
+                print f, "is tagged 'web' but doesn't exist here"
+
     files.sort()
     print root, "Real files we'll work on:", files
 

@@ -180,13 +180,15 @@ def handle_files(root, file_list, webpath=None):
             # a file that exiftran and jhead have previously been
             # called on produces the Nonfatal Error :
             # More than 10 date fields!  This is nuts
-            print "Calling exiftran etc. on", fpath
             subprocess.call(["exiftran", "-a", "-i", fpath])
             subprocess.call(["jhead", "-dt", "-norot", fpath])
 
             os.chmod(fpath, 0644)
 
-            print "Making thumbnail for", fpath
+            print "Running mogrify", fpath
+            subprocess.call(["mogrify", "-quality", "83", "-scale", "600^>",
+                             fpath])
+
             subprocess.call(["mkthumb", "-size", "200", fpath])
 
     title = os.path.split(os.path.basename(root))[1]

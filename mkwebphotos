@@ -6,6 +6,7 @@
 
 import os, sys
 import subprocess
+import shutil
 from PIL import Image
 
 # For importing standalone scripts as python modules:
@@ -69,117 +70,9 @@ def read_tag_file(f):
     fp.close()
     return tags
 
-def handle_files(root, file_list):
-    files = []
-    tags = None
-    for f in file_list:
-        if is_image_file(f):
-            files.append(f)
-        elif f == "Tags" or f == "Keywords":
-            tags = read_tag_file(os.path.join(root, f))
+def header(title):
+    return '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 
-    # But wait! If there's a tags file, and if we have a tag "web",
-    # use the files in that list instead of our file list.
-    if tags and 'web' in tags:
-        print "We have a web tag. Using those files."
-        files = []
-        for f in tags['web']:
-            if os.path.exists(os.path.join(root, f)):
-                files.append(f)
-            else:
-                print f, "is tagged 'web' but doesn't exist here"
-
-    files.sort()
-    print root, "Real files we'll work on:", files
-
-    for f in files:
-        fpath = os.path.join(root, f)
-
-        thumb = get_thumb_name(fpath)
-        if not thumb:
-            # This shouldn't happen because it should have been weeded out.
-            print f, "doesn't have an extension, skipping"
-            continue
-
-        os.chmod(fpath, 0644)
-
-        if not os.path.exists(thumb):
-            # If we already have a thumbnail, we've probably already
-            # called exiftran and jhead, so don't call them again:
-            # they don't play well together, and calling jhead on
-            # a file that exiftran and jhead have previously been
-            # called on produces the Nonfatal Error :
-            # More than 10 date fields!  This is nuts
-            subprocess.call(["exiftran", "-a", "-i", fpath])
-            subprocess.call(["jhead", "-dt", "-norot", fpath])
-
-            print "Making thumbnail for", fpath
-            subprocess.call(["mkthumb", "-size", "200", fpath])
-
-    title = os.path.split(os.path.basename(root))[1]
-    if title.startswith('./'): title = title[2:]
-    if title == '.': title = None
-    return mkphplist.make_php_list(files, tags=tags, root=root, title=title)
-
-def handle_dir(root, d):
-    '''For a directory, make links to the subdirectories,
-       using the first thumbnail if there are any at all.
-    '''
-    imgfile = None
-    files = os.listdir(os.path.join(root, d))
-    for f in files:
-        lastdot = f.rfind('.')
-        if lastdot < 0:
-            continue
-        if f[lastdot-1] != 'T':
-            continue
-        # It's a thumbnail file!
-        imgfile = f
-        img = Image.open(os.path.join(root, d, imgfile))
-        break
-
-    if imgfile:
-        return '<li><a href="%s"><img src="%s/%s" align=left width=%d height=%d alt="[%s]"><span class="caption">%s</span></a>\n' % \
-            (d, d, imgfile, img.size[0], img.size[1], d, d)
-    else:
-        return '<li><a href="%s">%s</a>\n' % (d, d)
-
-if __name__ == '__main__':
-    for root, dirs, files in os.walk('.'):
-        # print "\n================", root, "====================="
-        # print "files", files
-        # print "dirs", dirs
-
-        if files:
-            index = handle_files(root, files)
-        else:
-            index = ''
-
-        if dirs:
-            # A directory that only contains dirs, no files directly,
-            # should be seen as a sort of table of contents.
-            title = os.path.basename(root)
-            if title == '.':
-                title = "Images"
-            dirindex = '<h1>%s</h1>\n<ul class="thumbwrap">\n' % title
-            for d in dirs:
-                dirindex += handle_dir(root, d)
-            dirindex += '</ul>\n'
-        else:
-            dirindex = ''
-
-        # print "======= DIRS ===="
-        # print dirindex
-        # print "======= images ===="
-        # print index
-        # print "========================================"
-
-        if dirindex or index:
-            outfp = open(os.path.join(root, 'index.php'), 'w')
-            if dirindex:
-                title = "Images"
-                print >>outfp, '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">'
-                print >>outfp, '''
 <head>
 <title>%s</title>
 <link rel="stylesheet" type="text/css" href="/css/gallery.css" />
@@ -190,10 +83,162 @@ if __name__ == '__main__':
 <!-- put any additional stylesheets here -->
 </head>
 
-<body>''' % (title)
+<body>
+<h1>%s</h1>
+''' % (title, title)
+
+def handle_dir(root, d, webpath=None):
+    '''For a directory, make links to the subdirectories,
+       using the first thumbnail if there are any at all.
+    '''
+    if webpath:
+        newroot = os.path.normpath(os.path.join(webpath, root))
+    else:
+        newroot = root
+
+    # Search for a thumbnail in the new root, not the old one.
+    imgfile = None
+    files = os.listdir(os.path.join(newroot, d))
+    for f in files:
+        lastdot = f.rfind('.')
+        if lastdot < 0:
+            continue
+        if f[lastdot-1] != 'T':
+            continue
+        # It's a thumbnail file!
+        imgfile = f
+        img = Image.open(os.path.join(newroot, d, imgfile))
+        break
+
+    if imgfile:
+        return '<li><a href="%s"><img src="%s/%s" align=left width=%d height=%d alt="[%s]"><span class="caption">%s</span></a>\n' % \
+            (d, d, imgfile, img.size[0], img.size[1], d, d)
+    else:
+        return '<li><a href="%s">%s</a>\n' % (d, d)
+
+def handle_files(root, file_list, webpath=None):
+    files = []
+    dirs = []
+    tags = None
+
+    for f in file_list:
+        if is_image_file(f):
+            files.append(f)
+        elif f == "Tags" or f == "Keywords":
+            tags = read_tag_file(os.path.join(root, f))
+        elif os.path.isdir(f):
+            dirs.append(f)
+
+    # But wait! If there's a tags file, and if we have a tag "web",
+    # use the files in that list instead of our file list.
+    # But we don't actually want to keep 'web' as a tag,
+    # since we don't want it to show up in what mkphplist generates.
+    if tags and 'web' in tags:
+        webtags = tags['web']
+        tags.pop('web')
+        files = []
+        for f in webtags:
+            if os.path.exists(os.path.join(root, f)):
+                files.append(f)
+            else:
+                print f, "is tagged 'web' but doesn't exist here"
+
+    files.sort()
+    print root, "Real files we'll work on:", files
+
+    # Now copy those files to the web directory, if any.
+    if webpath:
+        newdir = os.path.normpath(os.path.join(webpath, root))
+        print "Copying files to", newdir
+        if not os.path.exists(newdir):
+            print "mkdir", newdir
+            os.makedirs(newdir, 0755)
+    else:
+        newdir = root
+
+    for f in files:
+        if webpath:
+            fpath = os.path.join(webpath, root, f)
+            if not os.path.exists(fpath):
+                print "Copy", os.path.join(root, f), fpath
+                shutil.copy(os.path.join(root, f), fpath)
+                # XXX scale them here too
+        else:
+            fpath = os.path.join(root, f)
+        fpath = os.path.normpath(fpath)
+
+        thumb = get_thumb_name(fpath)
+        if not thumb:
+            # This shouldn't happen because it should have been weeded out.
+            print f, "doesn't have an extension, skipping"
+            continue
+
+        if not os.path.exists(thumb):
+            # If we already have a thumbnail, we've probably already
+            # called exiftran and jhead, so don't call them again:
+            # they don't play well together, and calling jhead on
+            # a file that exiftran and jhead have previously been
+            # called on produces the Nonfatal Error :
+            # More than 10 date fields!  This is nuts
+            print "Calling exiftran etc. on", fpath
+            subprocess.call(["exiftran", "-a", "-i", fpath])
+            subprocess.call(["jhead", "-dt", "-norot", fpath])
+
+            os.chmod(fpath, 0644)
+
+            print "Making thumbnail for", fpath
+            subprocess.call(["mkthumb", "-size", "200", fpath])
+
+    title = os.path.split(os.path.basename(root))[1]
+    if title.startswith('./'): title = title[2:]
+    if title == '.': title = None
+    outstr = mkphplist.make_php_list(files, tags=tags, root=newdir, title=title)
+
+    return outstr
+
+if __name__ == '__main__':
+    orig_path = '.'   # Some day make this a commandline argument
+    web_dir = os.path.normpath(os.path.join(orig_path, 'web'))
+    if not os.path.exists(web_dir):
+        web_dir = '.'
+        # XXX eventually might want to use some rule like,
+        # mkdir web if the original dir has any subdirectories at all.
+
+    for root, dirs, files in os.walk(orig_path, topdown=False):
+        # Don't copy the web directory
+        if 'web' in dirs:
+            dirs.remove('web')
+
+        webpath = os.path.join(orig_path, web_dir)
+
+        # Must handle files before directories, because handle_dir
+        # will look for thumbnails which might not previously exist.
+        if files:
+            index = handle_files(root, files, webpath=webpath)
+        else:
+            index = ''
+
+        if dirs:
+            dirindex = '<ul class="thumbwrap">'
+            for d in dirs:
+                dirindex += handle_dir(root, d, webpath=webpath)
+            dirindex += '</ul>'
+        else:
+            dirindex = ''
+
+        # Write the directories first in the resulting file,
+        # in the unlikely event there are both image files and subdirs.
+        if dirindex or index:
+            outfile = os.path.join(web_dir, root, 'index.php')
+            print "Writing", outfile
+            outfp = open(outfile, 'w')
+
+            outfp.write(header("Images"))
+            if dirindex:
                 outfp.write(dirindex)
             if index:
                 outfp.write(index)
             outfp.close()
         else:
-            print "Nothing to write in", root
+            print "Yikes, nothing to write!"
+

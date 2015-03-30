@@ -71,7 +71,7 @@ def read_tag_file(f):
     return tags
 
 def header(title):
-    return '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+    s = '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 
 <head>
 <title>%s</title>
@@ -84,8 +84,10 @@ def header(title):
 </head>
 
 <body>
-<h1>%s</h1>
-''' % (title, title)
+''' % (title)
+    if title:
+        s += '<h1>%s</h1>' % title
+    return s
 
 def handle_dir(root, d, webpath=None):
     '''For a directory, make links to the subdirectories,
@@ -149,7 +151,6 @@ def handle_files(root, file_list, webpath=None):
     # Now copy those files to the web directory, if any.
     if webpath:
         newdir = os.path.normpath(os.path.join(webpath, root))
-        print "Copying files to", newdir
         if not os.path.exists(newdir):
             print "mkdir", newdir
             os.makedirs(newdir, 0755)
@@ -235,7 +236,11 @@ if __name__ == '__main__':
             print "Writing", outfile
             outfp = open(outfile, 'w')
 
-            outfp.write(header("Images"))
+            if dirindex:
+                outfp.write(header("Trip images"))
+            else:
+                outfp.write(header(None))
+
             if dirindex:
                 outfp.write(dirindex)
             if index:

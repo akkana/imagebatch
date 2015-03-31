@@ -85,9 +85,17 @@ def header(title):
 
 <body>
 ''' % (title)
-    if title:
-        s += '<h1>%s</h1>' % title
     return s
+
+def get_title_for_dir(d, default=None):
+    title = os.path.split(os.path.basename(d))[1]
+    if title.startswith('./'): title = title[2:]
+    if title == '.':
+        if default:
+            title = default
+        else:
+            title = "Images"
+    return title
 
 def handle_dir(root, d, webpath=None):
     '''For a directory, make links to the subdirectories,
@@ -118,7 +126,7 @@ def handle_dir(root, d, webpath=None):
     else:
         return '<li><a href="%s">%s</a>\n' % (d, d)
 
-def handle_files(root, file_list, webpath=None):
+def handle_files(root, file_list, webpath=None, title=None):
     files = []
     dirs = []
     tags = None
@@ -163,7 +171,21 @@ def handle_files(root, file_list, webpath=None):
             if not os.path.exists(fpath):
                 print "Copy", os.path.join(root, f), fpath
                 shutil.copy(os.path.join(root, f), fpath)
-                # XXX scale them here too
+
+                # Only run exiftran, jhead and mogrify if we're copying.
+                # Don't risk modifying original images in unreversible ways.
+                # In particular, exiftran and jhead don't play well together.
+                # Calling jhead on a file that exiftran and jhead have 
+                # previously been called on produces the Nonfatal Error :
+                # "More than 10 date fields!  This is nuts"
+                print "Running exiftran, jhead, mogrify on", fpath
+                subprocess.call(["exiftran", "-a", "-i", fpath])
+                subprocess.call(["jhead", "-dt", "-norot", fpath])
+
+                subprocess.call(["mogrify", "-quality", "83",
+                                 "-scale", "600^>", fpath])
+
+                os.chmod(fpath, 0644)
         else:
             fpath = os.path.join(root, f)
         fpath = os.path.normpath(fpath)
@@ -175,26 +197,10 @@ def handle_files(root, file_list, webpath=None):
             continue
 
         if not os.path.exists(thumb):
-            # If we already have a thumbnail, we've probably already
-            # called exiftran and jhead, so don't call them again:
-            # they don't play well together, and calling jhead on
-            # a file that exiftran and jhead have previously been
-            # called on produces the Nonfatal Error :
-            # More than 10 date fields!  This is nuts
-            subprocess.call(["exiftran", "-a", "-i", fpath])
-            subprocess.call(["jhead", "-dt", "-norot", fpath])
-
-            os.chmod(fpath, 0644)
-
-            print "Running mogrify", fpath
-            subprocess.call(["mogrify", "-quality", "83", "-scale", "600^>",
-                             fpath])
-
             subprocess.call(["mkthumb", "-size", "200", fpath])
 
-    title = os.path.split(os.path.basename(root))[1]
-    if title.startswith('./'): title = title[2:]
-    if title == '.': title = None
+    if not title:
+        title = get_title_for_dir(root)
     outstr = mkphplist.make_php_list(files, tags=tags, root=newdir, title=title)
 
     return outstr
@@ -207,6 +213,8 @@ if __name__ == '__main__':
         # XXX eventually might want to use some rule like,
         # mkdir web if the original dir has any subdirectories at all.
 
+    toptitle = get_title_for_dir(os.getcwd())
+
     for root, dirs, files in os.walk(orig_path, topdown=False):
         # Don't copy the web directory
         if 'web' in dirs:
@@ -216,13 +224,14 @@ if __name__ == '__main__':
 
         # Must handle files before directories, because handle_dir
         # will look for thumbnails which might not previously exist.
+        title = get_title_for_dir(root, toptitle)
         if files:
-            index = handle_files(root, files, webpath=webpath)
+            index = handle_files(root, files, webpath=webpath, title=title)
         else:
             index = ''
 
         if dirs:
-            dirindex = '<ul class="thumbwrap">'
+            dirindex = '<ul class="thumbwrap">\n'
             for d in dirs:
                 dirindex += handle_dir(root, d, webpath=webpath)
             dirindex += '</ul>'
@@ -236,15 +245,15 @@ if __name__ == '__main__':
             print "Writing", outfile
             outfp = open(outfile, 'w')
 
+            outfp.write(header(title))
             if dirindex:
-                outfp.write(header("Trip images"))
-            else:
-                outfp.write(header(None))
-
-            if dirindex:
+                outfp.write('<h1>%s</h1>' % title)
                 outfp.write(dirindex)
             if index:
+                # The PHP code to display files has its own title,
+                # no need for an H1 here.
                 outfp.write(index)
+            outfp.write("\n</body></html>\n");
             outfp.close()
         else:
             print "Yikes, nothing to write!"

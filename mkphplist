@@ -133,7 +133,6 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
 
     else:
         contents += """
-
 <?php
 $title = \"%s\";
 $preamble = "";

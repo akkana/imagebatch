@@ -25,7 +25,10 @@ You may freely use and modify these programs under the
 
 <p>
 <b>Download</b> the whole collection:
-<a href="imagebatch-1.4.tar.gz">imagebatch-1.4.tar.gz</a>.
+<a href="imagebatch-1.4.tar.gz">imagebatch-1.6.tar.gz</a>.
+<br>
+Or you can browse the latest version on
+<a href="https://github.com/akkana/imagebatch">GitHub: ImageBatch</a>.
 
 <p>
 <i>Warning!</i> These are not really set up as a nice usable package.
@@ -49,7 +52,48 @@ jhead (for cleaning up unwanted EXIF like embedded thumbnails).
 
 <h2>How to use</h2>
 <p>
-Here's a typical workflow for me, from photo upload to web page:
+Here's a typical workflow for me, from photo upload to web page.
+
+<ol>
+<li>Upload images and view and catalog them with my
+    <a href="http://shallowsky.com/blog/tags/metapho/">MetaPho</a> image
+    tagger. Tag images in each subdirectory separately (I generally have
+    one directory for each day of shooting), and use the special tag "web"
+    for any images you'll want to include in the web page.
+    Go ahead and tag the images with other tags as well.
+<li>Create a new, empty directory "web" inside your trip directory.<br>
+    This may be a symbolic link to a directory in your website.
+    This step is optional; if there's no "./web" subdirectory,
+    mkwebphotos will generate thumbnails and index.php files inside
+    the current image directory, but will not scale or otherwise modify
+    the images in the current directory.
+<li>Run mkwebphotos.<br>
+    This will copy all photos tagged "web" into the
+    web subdirectory if there is one, making subdirectories as needed.
+    If there is a web subdirectory, it will also run jhead -dt, rotate
+    images with exiftran (so those vertical format images show up properly
+    in browsers) and scale all the images to no larger than 800 pixels.
+    (This is currently hardwired; edit the script to change that 800
+    if you want larger or smaller images.)
+    <br>
+    Then it will make an index.php file in each directory that contains
+    images or subdirectories.
+<li>View the directory you've just made in a browser.<br>
+    The index.html files will show tags as descriptions for each image
+    or directory. This probably isn't what you want, so here's where
+    you spend forever adding in real descriptions for the photos.
+    And of course you'll want to change the page titles to something
+    descriptive, and add some descriptive text.
+    <br>
+    If you have a hierarchy of directories, mkwebphotos will have chosen
+    the first image in each subdirectory as the thumbnail for that directory
+    on the parent page. You'll probably want to pick a different image,
+    whatever is the most striking photo in each directory.
+</ol>
+
+<p>
+If you don't use metapho so you don't have all those Tags files handy,
+here's an older workflow, with more manual intervention:
 
 <ol>
 <li>After uploading images, I view and catalog them with my
@@ -100,13 +144,11 @@ make an index.html page.
 <dd>Find images under the current directory and generate
     a file suitable for using <i>showpix.php</i>.
     This is faster than the Perl CGI, and more self contained,
-    assuming you have PHP available.  I'm gradually migrating.
+    assuming you have PHP available. Called by mkwebphotos.
 
 <dt>mkwebphotos <i>(python)</i>
 <dd>Given a directory hierarchy containing images already sized,
-    make thumbnails, then showpix.cgi, index.html (using showpix.cgi)
-    and static.html (which refers to the images alone -- good for
-    when you back up the web page to a CD and send it to your parents).
+    copy the images, make thumbnails and make a starter index.php.
 
 <dt>thumbpage <i>(perl)</i>
 <dd>Make a big HTML page of thumbnails suitable for printing from a browser.

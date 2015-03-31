@@ -121,7 +121,7 @@ def handle_dir(root, d, webpath=None):
         break
 
     if imgfile:
-        return '<li><a href="%s"><img src="%s/%s" align=left width=%d height=%d alt="[%s]"><span class="caption">%s</span></a>\n' % \
+        return '<li><a href="%s"><img src="%s/%s" width=%d height=%d alt="[%s]"><span class="caption">%s</span></a>\n' % \
             (d, d, imgfile, img.size[0], img.size[1], d, d)
     else:
         return '<li><a href="%s">%s</a>\n' % (d, d)

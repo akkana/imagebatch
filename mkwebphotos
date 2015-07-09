@@ -70,22 +70,22 @@ def read_tag_file(f):
     fp.close()
     return tags
 
-def header(title):
-    s = '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+# def header(title):
+#     s = '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 
-<head>
-<title>%s</title>
-<link rel="stylesheet" type="text/css" href="/css/gallery.css" />
-<link rel="stylesheet" type="text/css" href="/css/gallerypic.css" />
-<!--[if lt IE 9]>
-<link rel="stylesheet" type="text/css" href="/css/gallery-ie.css" />
-<![endif]-->
-<!-- put any additional stylesheets here -->
-</head>
+# <head>
+# <title>%s</title>
+# <link rel="stylesheet" type="text/css" href="/css/gallery.css" />
+# <link rel="stylesheet" type="text/css" href="/css/gallerypic.css" />
+# <!--[if lt IE 9]>
+# <link rel="stylesheet" type="text/css" href="/css/gallery-ie.css" />
+# <![endif]-->
+# <!-- put any additional stylesheets here -->
+# </head>
 
-<body>
-''' % (title)
-    return s
+# <body>
+# ''' % (title)
+#     return s
 
 def get_title_for_dir(d, default=None):
     title = os.path.split(os.path.basename(d))[1]
@@ -245,7 +245,7 @@ if __name__ == '__main__':
             print "Writing", outfile
             outfp = open(outfile, 'w')
 
-            outfp.write(header(title))
+            # outfp.write(header(title))
             if dirindex:
                 outfp.write('<h1>%s</h1>' % title)
                 outfp.write(dirindex)

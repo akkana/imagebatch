@@ -76,6 +76,7 @@ def mkline(imgname, pixlist, root=None):
     pixlist.append([imgname, "", tw, th, w, h])
 
 def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
+    print "======== make_php_list: outfile=", outfile
     if not imgfiles:
         return ''
 
@@ -87,15 +88,21 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
     contents = ""
 
     # Are we modifying an existing file?
-    if outfile:
-        try:
+    try:
+        if outfile:
             infp = open(outfile)
-        except:
-            infp = None
-    else:
+        else:
+            # Even if no filename was passed in, if there's an index.php
+            # in the current directory, we should use any info that's in it.
+            if root:
+                infp = open(os.path.join(root, "index.php"))
+            else:
+                infp = open("index.php")
+    except:
         infp = None
 
     if infp:
+        print "Modifying an existing infile"
         seen_pixlist = False
         for line in infp:
             strline = line.strip()
@@ -127,6 +134,11 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
             if strline == '$pixlist = array(':
                 seen_pixlist = True
 
+            print "Read infp: now pixlist looks like:"
+            for p in pixlist:
+                print p
+            print "(end pixlist)"
+
         infp.close()
 
         pixlist.append('"New images added:",');
@@ -139,7 +151,11 @@ $preamble = "";
 $pixlist = array(
 """ % title
 
-    # Outputting to a file, or to stdout?
+    print "Header looks like:"
+    print contents
+    print "==="
+
+    # Outputting to a file, or to a string?
     if outfile:
         # Make a backup first:
         bakfile = outfile + ".bak"

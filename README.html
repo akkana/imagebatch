@@ -27,7 +27,8 @@ You may freely use and modify these programs under the
 <b>Download</b> the whole collection:
 <a href="imagebatch-1.4.tar.gz">imagebatch-1.6.tar.gz</a>.
 <br>
-Or you can browse the latest version on
+But that's from 2012. I've made some good changes in early 2015,
+and you can browse the latest version on
 <a href="https://github.com/akkana/imagebatch">GitHub: ImageBatch</a>.
 
 <p>
@@ -37,15 +38,13 @@ packages to do this, nobody's actually going to want mine except
 maybe as a learning tool or a starting point to write your own.
 If you actually are trying to use these scripts and having trouble
 figuring them out, please let me know.  I'll be happy to (1) answer
-any questions, (2) write some better documentation or (3) send you
-the latest versions (the versions here may not always be the
-latest-and-greatest and may have some bugs that I've fixed on
-my local machine).
+any questions or (2) write some better documentation.
 
 <p>
 <i>Requirements:</i> You should have ImageMagick (for scaling and thumbnail
 drop shadows), libjpeg-progs (for jpegtran and jpegexiforient) and
 jhead (for cleaning up unwanted EXIF like embedded thumbnails).
+And Python, of course.
 
 <p>
 <a href="http://shallowsky.com/images/escalante/grosvenor">Here's a sample page</a>.
@@ -122,6 +121,17 @@ make an index.html page.
 <dt>resizeall <i>(python)</i>
 <dd>Rescale images to a smaller size (can also make thumbnails).
     It requires the imgsize script.
+    <br>
+    It's probably no longer necessary now that imagemagick can
+    resize many images at once in place, at least if you learn the
+    proper incantations:
+    to do the same thing as resizeall -size 800 (which resizes all
+    images so that their largest dimension is 800 pixels), you need
+    <code>mogrify -quality 83 -scale 600^&gt;</code>
+    <br>
+    Note that in ImageMagick you have to give the <i>smaller</i>
+    dimension if you're only giving one; I haven't found any syntax
+    that lets you specify the larger one.
 
 <dt>mkthumb <i>(symbolic link to resizeall)</i>
 <dd>If resizeall is called as "mkthumb", it will automatically put itself

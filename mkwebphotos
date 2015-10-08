@@ -166,6 +166,11 @@ def handle_files(root, file_list, webpath=None, title=None):
         newdir = root
 
     for f in files:
+        # Typically, webpath will be set, and we'll copy images
+        # into it and run exiftran and such, if we're running from
+        # a directory of originals looking for anything tagged "web"
+        # in the Tags file.
+        # Otherwise, you need to run manually: exiftran -a -i *
         if webpath:
             fpath = os.path.join(webpath, root, f)
             if not os.path.exists(fpath):
@@ -216,11 +221,18 @@ if __name__ == '__main__':
     toptitle = get_title_for_dir(os.getcwd())
 
     for root, dirs, files in os.walk(orig_path, topdown=False):
-        # Don't copy the web directory
-        if 'web' in dirs:
-            dirs.remove('web')
+        # Don't index certain directories:
+        skip = False
+        for specialdir in [ 'web', 'fullsize', 'orig' ]:
+            if specialdir in dirs:
+                dirs.remove(specialdir)
+            if os.path.basename(root) == specialdir:
+                skip = True
+                break
+        if skip:
+            continue
 
-        webpath = os.path.join(orig_path, web_dir)
+        webpath = os.path.normpath(os.path.join(orig_path, web_dir))
 
         # Must handle files before directories, because handle_dir
         # will look for thumbnails which might not previously exist.

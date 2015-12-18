@@ -16,17 +16,15 @@ imp.load_source("mkphplist",
 import mkphplist
 
 def is_image_file(f):
-    '''Does this file have an extension, and it's not a thumbnail,
+    '''Does this file have an image extension, and it's not a thumbnail,
        i.e. it's not named *T.jpg?
     '''
-    if f.endswith('.php'):
+    image_exts = [ ".jpg", ".png", ".gif" ]
+    parts = os.path.splitext(f)
+    if len(parts) < 2:
         return False
-    lastdot = f.rfind('.')
-    if lastdot < 0:
-        return False
-    if f[lastdot-1] == 'T':
-        return False
-    return True
+    ext = parts[1].lower()
+    return ext in image_exts and parts[0][-1] != 'T'
 
 def get_thumb_name(f):
     lastdot = f.rfind('.')

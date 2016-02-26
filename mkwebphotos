@@ -200,6 +200,8 @@ def handle_files(root, file_list, webpath=None, title=None):
             continue
 
         if not os.path.exists(thumb):
+            # First make sure it's not rotated:
+            subprocess.call(["exiftran", "-a", "-i", fpath])
             subprocess.call(["mkthumb", "-size", "200", fpath])
 
     if not title:
@@ -221,7 +223,7 @@ if __name__ == '__main__':
     for root, dirs, files in os.walk(orig_path, topdown=False):
         # Don't index certain directories:
         skip = False
-        for specialdir in [ 'web', 'fullsize', 'orig' ]:
+        for specialdir in [ 'web', 'fullsize', 'orig', 'css' ]:
             if specialdir in dirs:
                 dirs.remove(specialdir)
             if os.path.basename(root) == specialdir:

@@ -76,6 +76,10 @@ def mkline(imgname, pixlist, root=None):
     pixlist.append([imgname, "", tw, th, w, h])
 
 def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
+    '''Create or overwrite one index.php file, adding the given imgfiles.
+       Will try to retain non-image content that was in any previous
+       index.php file, but no guarantees.
+    '''
     if not imgfiles:
         return ''
     print "make_php_list: outfile =", outfile, "title = ", title
@@ -134,10 +138,13 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
             if strline == '$pixlist = array(':
                 seen_pixlist = True
 
-            print "Read infp: now pixlist looks like:"
             for p in pixlist:
                 print p
-            print "(end pixlist)"
+
+        # Save the footer too.
+        footer = '  );\n'
+        for line in infp:
+            footer += line
 
         infp.close()
 
@@ -150,10 +157,18 @@ $title = \"%s\";
 $preamble = "";
 $pixlist = array(
 """ % title
+        footer = """  );
 
-    print "Header looks like:"
-    print contents
-    print "==="
+require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
+?>
+</body>
+</html>
+
+"""
+
+    # print "Header looks like:"
+    # print contents
+    # print "==="
 
     # Outputting to a file, or to a string?
     if outfile:
@@ -182,12 +197,8 @@ $pixlist = array(
                     contents += ', %s' % n
             contents += '),\n'
 
-    # The footer, which better not have been modified in the old file.
-    contents += """  );
-
-require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
-?>
-"""
+    # Add the footer, either saved or stock.
+    contents += footer
 
     return contents
 

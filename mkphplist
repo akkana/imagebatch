@@ -76,9 +76,9 @@ def mkline(imgname, pixlist, root=None):
     pixlist.append([imgname, "", tw, th, w, h])
 
 def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
-    print "======== make_php_list: outfile=", outfile
     if not imgfiles:
         return ''
+    print "make_php_list: outfile =", outfile, "title = ", title
 
     contents = ''
     pixlist = []
@@ -159,6 +159,7 @@ $pixlist = array(
     if outfile:
         # Make a backup first:
         bakfile = outfile + ".bak"
+        print "Backing up to", bakfile
         if os.path.exists(bakfile):
             os.rename(outfile, bakfile)
 
@@ -211,7 +212,8 @@ if __name__ == '__main__':
     else:
         imgfiles = sys.argv[1:]
 
-    contents = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"""
+    contents = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+"""
     contents += make_php_list(imgfiles, outfile)
 
     if outfile:

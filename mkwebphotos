@@ -214,7 +214,6 @@ def make_web_photos_multilevel(orig_path, web_dir, toptitle):
         for specialdir in SPECIALDIRS:
             if specialdir in dirs:
                 dirs.remove(specialdir)
-                print "Removed", specialdir
             if os.path.basename(root) == specialdir:
                 skip = True
                 break

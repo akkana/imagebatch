@@ -9,6 +9,11 @@ import subprocess
 import shutil
 from PIL import Image
 
+# Directories in which we'll ignore images:
+SPECIALDIRS = [ 'web', 'fullsize', 'orig', 'css', '.git', 'icons' ]
+
+tags = {}
+
 # For importing standalone scripts as python modules:
 import imp
 imp.load_source("mkphplist",
@@ -33,7 +38,6 @@ def get_thumb_name(f):
     return f[:lastdot] + 'T' + f[lastdot:]
 
 def read_tag_file(f):
-    tags = {}
     fp = open(f)
     for line in fp:
         if not line:
@@ -67,23 +71,6 @@ def read_tag_file(f):
 
     fp.close()
     return tags
-
-# def header(title):
-#     s = '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-
-# <head>
-# <title>%s</title>
-# <link rel="stylesheet" type="text/css" href="/css/gallery.css" />
-# <link rel="stylesheet" type="text/css" href="/css/gallerypic.css" />
-# <!--[if lt IE 9]>
-# <link rel="stylesheet" type="text/css" href="/css/gallery-ie.css" />
-# <![endif]-->
-# <!-- put any additional stylesheets here -->
-# </head>
-
-# <body>
-# ''' % (title)
-#     return s
 
 def get_title_for_dir(d, default=None):
     title = os.path.split(os.path.basename(d))[1]
@@ -125,6 +112,12 @@ def handle_dir(root, d, webpath=None):
         return '<li><a href="%s">%s</a>\n' % (d, d)
 
 def handle_files(root, file_list, webpath=None, title=None):
+    '''For every file in root/{file_list},
+       call exiftran and mkthumb if necessary to make a thumbnail,
+       copy it into webpath if any,
+       read tags into the global tags if it's a Tags/Keywords file,
+       then finally call mkphplist.make_php_list on the full list.
+    '''
     files = []
     dirs = []
     tags = None
@@ -210,22 +203,18 @@ def handle_files(root, file_list, webpath=None, title=None):
 
     return outstr
 
-if __name__ == '__main__':
-    orig_path = '.'   # Some day make this a commandline argument
-    web_dir = os.path.normpath(os.path.join(orig_path, 'web'))
-    if not os.path.exists(web_dir):
-        web_dir = '.'
-        # XXX eventually might want to use some rule like,
-        # mkdir web if the original dir has any subdirectories at all.
-
-    toptitle = get_title_for_dir(os.getcwd())
-
-    for root, dirs, files in os.walk(orig_path, topdown=False):
-        # Don't index certain directories:
+def make_web_photos_multilevel(orig_path, web_dir, toptitle):
+    '''Write an index.php in orig_path that points to
+       a series of index.php files in subdirectories.
+    '''
+    for root, dirs, files in os.walk(orig_path, topdown=True):
+        # Don't index certain directories.
+        # This check requires topdown=True in the os.walk.
         skip = False
-        for specialdir in [ 'web', 'fullsize', 'orig', 'css' ]:
+        for specialdir in SPECIALDIRS:
             if specialdir in dirs:
                 dirs.remove(specialdir)
+                print "Removed", specialdir
             if os.path.basename(root) == specialdir:
                 skip = True
                 break
@@ -269,4 +258,76 @@ if __name__ == '__main__':
             outfp.close()
         else:
             print "Yikes, nothing to write!"
+
+def make_web_photos_onelevel(orig_path, web_dir, title):
+    '''Write an index.php in orig_path that covers all image files
+       in any subdirectory under that path.
+    '''
+    print "make_web_photos_onelevel(%s)" % orig_path
+    imgfiles = []
+    for root, dirs, files in os.walk(orig_path, topdown=True):
+        # Don't index certain directories.
+        # This check requires topdown=True in the os.walk.
+        skip = False
+        for specialdir in SPECIALDIRS:
+            if specialdir in dirs:
+                dirs.remove(specialdir)
+
+        if os.path.basename(root) in SPECIALDIRS:
+            continue
+
+        imgfiles += map(lambda f: os.path.normpath(os.path.join(root, f)),
+                        files)
+
+    index = handle_files(orig_path, imgfiles, webpath=web_dir, title=title)
+    if index:
+        if web_dir:
+            # webpath = os.path.normpath(os.path.join(orig_path, web_dir))
+            outfile = os.path.join(web_dir, 'index.php')
+        else:
+            outfile = os.path.join(orig_path, 'index.php')
+        
+        print "Writing", outfile
+        outfp = open(outfile, 'w')
+        outfp.write(index)
+        outfp.close()
+    else:
+        print "Yikes, nothing to write!"
+
+if __name__ == '__main__':
+    orig_path = '.'   # Some day make this a commandline argument
+    web_dir = os.path.normpath(os.path.join(orig_path, 'web'))
+    if not os.path.exists(web_dir):
+        web_dir = '.'
+        # XXX eventually might want to use some rule like,
+        # mkdir web if the original dir has any subdirectories at all.
+
+    toptitle = get_title_for_dir(os.getcwd())
+
+    # If there are subdirectories, there are two ways we may want
+    # them treated. Either we can have separate index.php files in
+    # each subdirectory (good when you have different categories,
+    # like a vacation where you went to different places);
+    # or we can have one index.php at the top which indexes
+    # all images underneath (for e.g. a website with an images/ dir).
+    #
+    # We'll default to the first model, but in a case where there's
+    # already an index.php at the top level but not in any subdirectories,
+    # the user probably wants the other model, so give it to them.
+    # Here's where we detect that:
+    use_one_index = False
+    if os.path.exists(os.path.join(orig_path, "index.php")):
+        for root, dirs, files in os.walk(orig_path, topdown=False):
+            if not use_one_index:
+                for dir in dirs:
+                    if os.path.exists(os.path.join(root, dir, "index.php")):
+                        use_one_index = True
+                        break
+
+    if use_one_index:
+        make_web_photos_onelevel(orig_path, web_dir, toptitle)
+    else:
+        print "Would make multilevel, but skipping"
+        sys.exit(1)
+        make_web_photos_multilevel(orig_path, web_dir, toptitle)
 

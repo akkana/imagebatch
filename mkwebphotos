@@ -10,7 +10,7 @@ import shutil
 from PIL import Image
 
 # Directories in which we'll ignore images:
-SPECIALDIRS = [ 'web', 'fullsize', 'orig', 'css', '.git', 'icons' ]
+SPECIALDIRS = [ 'web', 'fullsize', 'orig', 'css', '.git', 'icons', 'tmp' ]
 
 tags = {}
 
@@ -214,7 +214,6 @@ def make_web_photos_multilevel(orig_path, web_dir, toptitle):
         for specialdir in SPECIALDIRS:
             if specialdir in dirs:
                 dirs.remove(specialdir)
-                print "Removed", specialdir
             if os.path.basename(root) == specialdir:
                 skip = True
                 break
@@ -315,19 +314,30 @@ if __name__ == '__main__':
     # already an index.php at the top level but not in any subdirectories,
     # the user probably wants the other model, so give it to them.
     # Here's where we detect that:
-    use_one_index = False
     if os.path.exists(os.path.join(orig_path, "index.php")):
+        use_one_index = False
         for root, dirs, files in os.walk(orig_path, topdown=False):
             if not use_one_index:
                 for dir in dirs:
                     if os.path.exists(os.path.join(root, dir, "index.php")):
                         use_one_index = True
                         break
+    else:
+        use_one_index = True
+        for root, dirs, files in os.walk(orig_path):
+            if root != orig_path:
+                for f in files:
+                    if is_image_file(f):
+                        use_one_index = False
+                        print "Found an image in a subdir!", root, f
+                        break
+                print "No image files in", root
+                if not use_one_index:
+                    break
+        print "Use one index?", use_one_index
 
     if use_one_index:
         make_web_photos_onelevel(orig_path, web_dir, toptitle)
     else:
-        print "Would make multilevel, but skipping"
-        sys.exit(1)
         make_web_photos_multilevel(orig_path, web_dir, toptitle)
 

@@ -26,6 +26,8 @@ dropshadow = 0
 overwrite = 0
 
 # Use imageMagick, or netpbm?
+# XXX Should test for existence of convert vs. djpeg programs!
+# Or, of course, use the python bindings.
 imageMagick = 1
 
 def Usage() :

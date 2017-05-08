@@ -61,7 +61,7 @@ while ($#argv >= 1)
                 exit 1
             endif
       	else if ($?haveconvert) then
-            convert -rotate $degrees $argv[1] $gmp
+            convert -rotate $degrees $argv[1] $tmp
             if ($status != 0) then
                 echo "Couldn't run jpegtran"
                 rm $foo
@@ -70,7 +70,7 @@ while ($#argv >= 1)
         else
             echo "Can't use either convert or jpegtran"
     	endif
-    
+
             # and finally, move the file into place:
             mv $tmp $argv[1]
         endif

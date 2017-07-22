@@ -101,7 +101,7 @@ The PHP that does the work of generating the web pages. Put this in a subdirecto
 ### css/gallery.css
 ### css/gallerypic.css
 ### css/gallery-ie.css
-CSS files that make the fancy list-based gallery pages work. I'm indebted to this brunildo example and the related discussion without which I might still be stuck on 4-column wide tables (like on this sample page for what tblimages creates with the -t option).
+CSS files that make the fancy list-based gallery pages work. I'm indebted to [this brunildo example](http://www.brunildo.org/test/ImgThumbIBL3.html) and [the related discussion](http://archivist.incutio.com/viewlist/css-discuss/84544) without which I might still be stuck on 4-column wide tables (like on this [sample page](http://shallowsky.com/images/stevcrk_1_20/) showing what tblimages creates with the -t option).
 
 ## Some older scripts, only needed for specialized uses
 

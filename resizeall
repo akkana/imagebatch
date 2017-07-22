@@ -15,6 +15,7 @@
 
 import sys, string, os, re
 # , os.path
+import subprocess
 
 scale = .5
 doscale = 1
@@ -29,6 +30,16 @@ overwrite = 0
 # XXX Should test for existence of convert vs. djpeg programs!
 # Or, of course, use the python bindings.
 imageMagick = 1
+
+def read_imagesize(fil):
+    fp = os.popen("imgsize " + fil)
+    oldsize = fp.readline()
+    fp.close()
+    sw = string.split(oldsize, " ")
+    if len(sw) < 3 or sw[-2] != "x" :
+        print "Problem parsing imgsize: returned", sw
+        continue
+    return int(sw[-3]), int(sw[-3])
 
 def Usage() :
     print "Usage:", sys.argv[0], "[-magick|nomagick] [-nodrop] [-force] [-size|-scale size|scale]"
@@ -106,22 +117,14 @@ for argp in range(argp, len(sys.argv)) :
                          " | pnmscale -xscale .5 -yscale .5 | cjpeg > " \
                            + tmpfil)
         if status != 0 or os.path.getsize(fil) :
-	    os.remove(tmpfil)
+            os.remove(tmpfil)
         elif newfil != 0 :
             os.rename(tmpfil, newfil)
 
         continue
 
     # For any of the other modes, we need to know the file size.
-    fp = os.popen("imgsize " + fil)
-    oldsize = fp.readline()
-    fp.close()
-    sw = string.split(oldsize, " ")
-    if len(sw) < 3 or sw[-2] != "x" :
-        print "Problem parsing imgsize: returned", sw
-        continue
-    sx = int(sw[-3])
-    sy = int(sw[-1])
+    sx, sy = read_imagesize(fil)
     print fil, ":", sx, "x", sy,
 
     if imageMagick and doscale :
@@ -139,16 +142,16 @@ for argp in range(argp, len(sys.argv)) :
         print " (horizontal)"
         if imageMagick :
             geom = str(scale)
-	else :
+        else :
             flag = "-xsize"
-	max = sx
+        max = sx
     else :
         print " (vertical)"
         if imageMagick :
             geom = "x" + `scale`
-	else :
+        else :
             flag = "-ysize"
-	max = sy
+        max = sy
 
     if dontshrink and (scale > max) :
         print " (Already smaller than scale.)"

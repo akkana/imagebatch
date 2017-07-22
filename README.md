@@ -74,7 +74,7 @@ mkwebphotos and it will make an index.html page.
 ## The main scripts
 
 ### resizeall (python)
-Rescale images to a smaller size (can also make thumbnails). It requires the imgsize script.
+Rescale images to a smaller size (can also make thumbnails).
 
 ### mkthumb (symbolic link to resizeall)
 If resizeall is called as "mkthumb", it will automatically put itself in thumbnail mode, and (unless told otherwise) will generate drop shadows. Just make a link from resizeall to mkthumb.
@@ -90,10 +90,7 @@ Find images under the current directory and generate a file suitable for using s
 ### mkwebphotos (python)
 Given a directory hierarchy containing images already sized, copy the images, make thumbnails and make a starter index.php.
 
-### imgsize (Perl)
-Print the size of an image file. Based on code adapted from the excellent wwwis program, which is indispensable for setting width and height tags in html pages.
-
-## CSS files for displaying the gallery pages:
+## Files for displaying the gallery pages:
 
 ### gallerypage-base.php (PHP)
 The PHP that does the work of generating the web pages. Put this in a subdirectory of your web site called software, or else change the path that mkphplist uses for its require.
@@ -104,6 +101,9 @@ The PHP that does the work of generating the web pages. Put this in a subdirecto
 CSS files that make the fancy list-based gallery pages work. I'm indebted to [this brunildo example](http://www.brunildo.org/test/ImgThumbIBL3.html) and [the related discussion](http://archivist.incutio.com/viewlist/css-discuss/84544) without which I might still be stuck on 4-column wide tables (like on this [sample page](http://shallowsky.com/images/stevcrk_1_20/) showing what tblimages creates with the -t option).
 
 ## Some older scripts, only needed for specialized uses
+
+### imgsize (Perl)
+Print the size of an image file. Based on code adapted from the excellent wwwis program, which is indispensable for setting width and height tags in html pages.
 
 ### thumbpage (perl)
 Make a big HTML page of thumbnails suitable for printing from a browser. Useful if you want to keep a printed archive of your photo collection.

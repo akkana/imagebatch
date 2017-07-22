@@ -32,14 +32,10 @@ overwrite = 0
 imageMagick = 1
 
 def read_imagesize(fil):
-    fp = os.popen("imgsize " + fil)
-    oldsize = fp.readline()
-    fp.close()
-    sw = string.split(oldsize, " ")
-    if len(sw) < 3 or sw[-2] != "x" :
-        print "Problem parsing imgsize: returned", sw
-        continue
-    return int(sw[-3]), int(sw[-3])
+    proc = subprocess.Popen(["identify", fil],
+                            shell=False, stdout=subprocess.PIPE)
+    size = proc.communicate()[0].split()[2]
+    return map(int, size.split('x'))
 
 def Usage() :
     print "Usage:", sys.argv[0], "[-magick|nomagick] [-nodrop] [-force] [-size|-scale size|scale]"

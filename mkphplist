@@ -56,7 +56,14 @@ def have_image(imgname, pixlist):
                 return p
     return False
 
+added_new = False
 def mkline(imgname, pixlist, root=None):
+    '''Add an image and its correct, updated sizes to the pixlist
+       if it's not already there.
+       The first time we add an image, we'll add a line before it
+       that says "New images added" to make the new images easy to find.
+    '''
+    global added_new
     imgname = imgname.strip()
     if imgname[0:2] == "./":
         imgname = imgname[2:]
@@ -73,6 +80,9 @@ def mkline(imgname, pixlist, root=None):
 
     tw, th, w, h = getthumbsize(imgname, root)
 
+    if not added_new:
+        pixlist.append('"New images added:",');
+        added_new = True
     pixlist.append([imgname, "", tw, th, w, h])
 
 def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
@@ -148,8 +158,6 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
 
         infp.close()
 
-        pixlist.append('"New images added:",');
-
     else:
         contents += """
 <?php
@@ -165,10 +173,6 @@ require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
 </html>
 
 """
-
-    # print "Header looks like:"
-    # print contents
-    # print "==="
 
     # Outputting to a file, or to a string?
     if outfile:

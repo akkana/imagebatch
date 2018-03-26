@@ -253,7 +253,8 @@ def make_web_photos_multilevel(orig_path, web_dir, toptitle):
                 # The PHP code to display files has its own title,
                 # no need for an H1 here.
                 outfp.write(index)
-            outfp.write("\n</body></html>\n");
+            # Used to close the body and html here, but now
+            # the gallery pages do that themselves.
             outfp.close()
         else:
             print "Yikes, nothing to write!"
@@ -285,7 +286,7 @@ def make_web_photos_onelevel(orig_path, web_dir, title):
             outfile = os.path.join(web_dir, 'index.php')
         else:
             outfile = os.path.join(orig_path, 'index.php')
-        
+
         print "Writing", outfile
         outfp = open(outfile, 'w')
         outfp.write(index)
@@ -294,7 +295,7 @@ def make_web_photos_onelevel(orig_path, web_dir, title):
         print "Yikes, nothing to write!"
 
 if __name__ == '__main__':
-    orig_path = '.'   # Some day make this a commandline argument
+    orig_path = '.'   # XXX Some day make this a commandline argument
     web_dir = os.path.normpath(os.path.join(orig_path, 'web'))
     if not os.path.exists(web_dir):
         web_dir = '.'

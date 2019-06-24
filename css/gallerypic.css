@@ -27,12 +27,9 @@
 
 }
 
-.picnav li {
+.picnav a {
   display: inline;
   margin: auto 1em;
-}
-
-.picnav li a {
   padding: .2em 1em;
   background: #dff;
   color: black;
@@ -45,3 +42,19 @@
 .picnav li a:hover {
   background: #fff;
 }
+
+/* a.nav { font-weight: bold; font-style: italic; } */
+
+.navbar a { border: #eee 2px outset; padding: 4px; background: #eee;
+            text-decoration: none; font-weight: bold; font-style: italic; }
+
+.navbar a:hover { background: #eff; }
+
+/* Styling that makes the page more mobile-friendly on small screens*/
+@media (max-width: 900px) {
+    img { max-width: 100%; height: auto; }
+    .picnav { display: table; padding: 2px; margin: 2px; width: 99%; }
+    .picnav a { display: table-cell; max-width: 10em; line-height: 1.2; }
+}
+
+

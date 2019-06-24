@@ -23,7 +23,6 @@ table.thumbwrap tr, table.thumbwrap tbody {
  */
 
 .thumbwrap>li, table.thumbwrap td  {
-	display: -moz-inline-box;  /* for moz < 1.9 */
 	display: inline-block;
 	/*\*/ vertical-align: top; /**/
 	margin: 0 5px 12px 5px;
@@ -46,8 +45,8 @@ table.thumbwrap tr, table.thumbwrap tbody {
  */
 .thumbwrap>li>a, table.thumbwrap td>a {
 	/*\*/ display: table; /**/
-	width: 219px;
 	text-align: center;
+        padding: .5em;
 }
 .thumbwrap img {
 	vertical-align: bottom;
@@ -60,7 +59,7 @@ table.thumbwrap tr, table.thumbwrap tbody {
 	padding: .3em 5px;
 	font-size: .9em;
 	line-height: 1.1em;
-	w\idth: 209px;  /* Moz, IE6 */
+	/* w\idth: 209px;  /* Moz, IE6 */
 }
 /* top ib e hover Op < 9.5 */
 @media all and (min-width: 0px) {

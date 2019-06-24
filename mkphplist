@@ -2,7 +2,7 @@
 
 # mkphplist: find all non-thumbnail images under the current directory,
 # and generate a showpix.php with the appropriate image list.
-# Copyright 2004 by Akkana Peck. 
+# Copyright 2004 by Akkana Peck.
 # You may use and distribute this under the GPL.
 
 import sys, os
@@ -12,6 +12,7 @@ import re
 # Try to get an image's and thumbnail size.
 # Return thumbwidth, thumbheight, width, height as strings.
 def getthumbsize(imgname, root=None):
+    sys.stdout.flush()
     if root:
         imgname = os.path.join(root, imgname)
     try:
@@ -20,7 +21,7 @@ def getthumbsize(imgname, root=None):
                                 shell=False, stdout=subprocess.PIPE)
         s = proc.communicate()[0]
         if s:
-            sizes = s.split()[2].split("x")
+            sizes = [ x.decode() for x in s.split()[2].split(b"x") ]
         else:
             sizes = [0, 0]
 
@@ -30,7 +31,7 @@ def getthumbsize(imgname, root=None):
                                 shell=False, stdout=subprocess.PIPE)
         s = proc.communicate()[0]
         if s:
-            thumbsizes = s.split()[2].split("x")
+            thumbsizes = [ x.decode() for x in s.split()[2].split(b"x") ]
         else:
             thumbsizes = [0, 0]
 
@@ -41,11 +42,12 @@ def getthumbsize(imgname, root=None):
         # fp.close()
         # if not s:
         #     return 0, 0
-        # sizes = s.split()[2].split("x")
+        # sizes = s.split()[2].split(b"x")
 
+        print("sizes", sizes, "thumbsizes", thumbsizes)
         return thumbsizes[0], thumbsizes[1], sizes[0], sizes[1]
 
-    except Exception, e:
+    except Exception as e:
         raise e
         return None, None
 
@@ -72,10 +74,10 @@ def mkline(imgname, pixlist, root=None):
     if img:
         tw, th, w, h = getthumbsize(imgname, root)
         if [tw, th, w, h] != img[2:]:
-            print "Need to correct sizes:", tw, th, w, h, "vs", img[2:]
+            print("Need to correct sizes:", tw, th, w, h, "vs", img[2:])
             img[2:] = [tw, th, w, h]
         else:
-            print "Skipping", imgname
+            print("Skipping", imgname)
         return
 
     tw, th, w, h = getthumbsize(imgname, root)
@@ -92,7 +94,7 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
     '''
     if not imgfiles:
         return ''
-    print "make_php_list: outfile =", outfile, "title = ", title
+    print("make_php_list: outfile =", outfile, "title = ", title)
 
     contents = ''
     pixlist = []
@@ -116,7 +118,7 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
         infp = None
 
     if infp:
-        print "Modifying an existing infile"
+        print("Modifying an existing infile")
         seen_pixlist = False
         for line in infp:
             strline = line.strip()
@@ -149,7 +151,7 @@ def make_php_list(imgfiles, outfile=None, tags=None, root=None, title=None):
                 seen_pixlist = True
 
             for p in pixlist:
-                print p
+                print(p)
 
         # Save the footer too.
         footer = '  );\n'
@@ -178,7 +180,7 @@ require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
     if outfile:
         # Make a backup first:
         bakfile = outfile + ".bak"
-        print "Backing up to", bakfile
+        print("Backing up to", bakfile)
         if os.path.exists(bakfile):
             os.rename(outfile, bakfile)
 
@@ -191,7 +193,7 @@ require($_SERVER["DOCUMENT_ROOT"] . "/software/gallerypage-base.php");
         else:
             if tags and not p[1]:
                 tlist = []
-                for t in tags.keys():
+                for t in list(tags.keys()):
                     if p[0] in tags[t]:
                         tlist.append(t)
                 p[1] = ', '.join(tlist)
@@ -236,5 +238,5 @@ if __name__ == '__main__':
     else:
         outfp = sys.stdout
 
-    print >>outfp, contents
+    print(contents, file=outfp)
 

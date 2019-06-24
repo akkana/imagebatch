@@ -15,10 +15,23 @@ SPECIALDIRS = [ 'web', 'fullsize', 'orig', 'css', '.git', 'icons', 'tmp' ]
 tags = {}
 
 # For importing standalone scripts as python modules:
-import imp
-imp.load_source("mkphplist",
-                os.path.join(os.path.dirname(__file__), "mkphplist"))
-import mkphplist
+# import imp
+# imp.load_source("mkphplist",
+#                 os.path.join(os.path.dirname(__file__), "mkphplist"))
+# import mkphplist
+
+# from importlib.machinery import SourceFileLoader
+# mkphplist = SourceFileLoader('mkphplist',
+#                              os.path.join(os.path.dirname(__file__),
+#                                           "mkphplist")).load_module()
+
+from importlib.util import spec_from_loader, module_from_spec
+from importlib.machinery import SourceFileLoader
+mkphppath = os.path.join(os.path.dirname(__file__), "mkphplist")
+
+spec = spec_from_loader("mkphplist", SourceFileLoader("mkphplist", mkphppath))
+mkphplist = module_from_spec(spec)
+spec.loader.exec_module(mkphplist)
 
 def is_image_file(f):
     '''Does this file have an image extension, and it's not a thumbnail,
@@ -53,18 +66,18 @@ def read_tag_file(f):
             continue
         parts = line.split(':')
         if len(parts) != 2:
-            print "malformed tag file line:", line
+            print("malformed tag file line:", line)
             continue
         tag = parts[0].strip()
         tagged_files = parts[1].split(' ')
         if not tag:
-            print "Null tag!", tag
+            print("Null tag!", tag)
             continue
         for t in tagged_files:
             t = t.strip()
             if not t:
                 continue
-            if tag in tags.keys():
+            if tag in list(tags.keys()):
                 tags[tag].append(t)
             else:
                 tags[tag] = [ t ]
@@ -142,17 +155,17 @@ def handle_files(root, file_list, webpath=None, title=None):
             if os.path.exists(os.path.join(root, f)):
                 files.append(f)
             else:
-                print f, "is tagged 'web' but doesn't exist here"
+                print(f, "is tagged 'web' but doesn't exist here")
 
     files.sort()
-    print root, "Real files we'll work on:", files
+    print(root, "Real files we'll work on:", files)
 
     # Now copy those files to the web directory, if any.
     if webpath:
         newdir = os.path.normpath(os.path.join(webpath, root))
         if not os.path.exists(newdir):
-            print "mkdir", newdir
-            os.makedirs(newdir, 0755)
+            print("mkdir", newdir)
+            os.makedirs(newdir, 0o755)
     else:
         newdir = root
 
@@ -165,7 +178,7 @@ def handle_files(root, file_list, webpath=None, title=None):
         if webpath:
             fpath = os.path.join(webpath, root, f)
             if not os.path.exists(fpath):
-                print "Copy", os.path.join(root, f), fpath
+                print("Copy", os.path.join(root, f), fpath)
                 shutil.copy(os.path.join(root, f), fpath)
 
                 # Only run exiftran, jhead and mogrify if we're copying.
@@ -174,14 +187,14 @@ def handle_files(root, file_list, webpath=None, title=None):
                 # Calling jhead on a file that exiftran and jhead have 
                 # previously been called on produces the Nonfatal Error :
                 # "More than 10 date fields!  This is nuts"
-                print "Running exiftran, jhead, mogrify on", fpath
+                print("Running exiftran, jhead, mogrify on", fpath)
                 subprocess.call(["exiftran", "-a", "-i", fpath])
                 subprocess.call(["jhead", "-dt", "-norot", fpath])
 
                 subprocess.call(["mogrify", "-quality", "83",
                                  "-scale", "600^>", fpath])
 
-                os.chmod(fpath, 0644)
+                os.chmod(fpath, 0o644)
         else:
             fpath = os.path.join(root, f)
         fpath = os.path.normpath(fpath)
@@ -189,7 +202,7 @@ def handle_files(root, file_list, webpath=None, title=None):
         thumb = get_thumb_name(fpath)
         if not thumb:
             # This shouldn't happen because it should have been weeded out.
-            print f, "doesn't have an extension, skipping"
+            print(f, "doesn't have an extension, skipping")
             continue
 
         if not os.path.exists(thumb):
@@ -242,7 +255,7 @@ def make_web_photos_multilevel(orig_path, web_dir, toptitle):
         # in the unlikely event there are both image files and subdirs.
         if dirindex or index:
             outfile = os.path.join(web_dir, root, 'index.php')
-            print "Writing", outfile
+            print("Writing", outfile)
             outfp = open(outfile, 'w')
 
             # outfp.write(header(title))
@@ -257,13 +270,13 @@ def make_web_photos_multilevel(orig_path, web_dir, toptitle):
             # the gallery pages do that themselves.
             outfp.close()
         else:
-            print "Yikes, nothing to write!"
+            print("Yikes, nothing to write!")
 
 def make_web_photos_onelevel(orig_path, web_dir, title):
     '''Write an index.php in orig_path that covers all image files
        in any subdirectory under that path.
     '''
-    print "make_web_photos_onelevel(%s)" % orig_path
+    print("make_web_photos_onelevel(%s)" % orig_path)
     imgfiles = []
     for root, dirs, files in os.walk(orig_path, topdown=True):
         # Don't index certain directories.
@@ -276,8 +289,7 @@ def make_web_photos_onelevel(orig_path, web_dir, title):
         if os.path.basename(root) in SPECIALDIRS:
             continue
 
-        imgfiles += map(lambda f: os.path.normpath(os.path.join(root, f)),
-                        files)
+        imgfiles += [os.path.normpath(os.path.join(root, f)) for f in files]
 
     index = handle_files(orig_path, imgfiles, webpath=web_dir, title=title)
     if index:
@@ -287,12 +299,12 @@ def make_web_photos_onelevel(orig_path, web_dir, title):
         else:
             outfile = os.path.join(orig_path, 'index.php')
 
-        print "Writing", outfile
+        print("Writing", outfile)
         outfp = open(outfile, 'w')
         outfp.write(index)
         outfp.close()
     else:
-        print "Yikes, nothing to write!"
+        print("Yikes, nothing to write!")
 
 if __name__ == '__main__':
     orig_path = '.'   # XXX Some day make this a commandline argument
@@ -330,12 +342,12 @@ if __name__ == '__main__':
                 for f in files:
                     if is_image_file(f):
                         use_one_index = False
-                        print "Found an image in a subdir!", root, f
+                        print("Found an image in a subdir!", root, f)
                         break
-                print "No image files in", root
+                print("No image files in", root)
                 if not use_one_index:
                     break
-        print "Use one index?", use_one_index
+        print("Use one index?", use_one_index)
 
     if use_one_index:
         make_web_photos_onelevel(orig_path, web_dir, toptitle)

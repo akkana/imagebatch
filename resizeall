@@ -13,6 +13,8 @@
 # - -geometry '>200x200' preserves aspect ratio and doesn't enlarge
 #
 
+from __future__ import print_function
+
 import sys, string, os, re
 # , os.path
 import subprocess
@@ -35,10 +37,10 @@ def read_imagesize(fil):
     proc = subprocess.Popen(["identify", fil],
                             shell=False, stdout=subprocess.PIPE)
     size = proc.communicate()[0].split()[2]
-    return map(int, size.split('x'))
+    return map(int, size.split(b'x'))
 
 def Usage() :
-    print "Usage:", sys.argv[0], "[-magick|nomagick] [-nodrop] [-force] [-size|-scale size|scale]"
+    print("Usage:", sys.argv[0], "[-magick|nomagick] [-nodrop] [-force] [-size|-scale size|scale]")
     sys.exit(1)
 
 # Are we in thumbnail mode?
@@ -56,13 +58,13 @@ while argp < len(sys.argv) and sys.argv[argp][0:1] == "-" :
     if sys.argv[argp] == "-scale" :
         doscale = 1
         scale = float(sys.argv[argp+1])
-        print "New scale will be", scale
+        print("New scale will be", scale)
         argp = argp + 2
 
     elif sys.argv[argp] == "-size" :
         doscale = 0
         scale = int(sys.argv[argp+1])
-        print "New size will be", scale
+        print("New size will be", scale)
         argp = argp + 2
     elif sys.argv[argp] == "-magick" :
         imageMagick = 1
@@ -89,13 +91,13 @@ for argp in range(argp, len(sys.argv)) :
     fil = p.sub('\ ', fil)
 
     # Set up filenames
-    period = string.rfind(fil, ".")
+    period = fil.rfind(".")
     if (period < 0) :
-        print fil, "has no extension!"
+        print(fil, "has no extension!")
         continue
     if thumbnail :
         tmpfil = fil[0:period] + "T" + fil[period:]
-        print "tmpfile:", tmpfil
+        print("tmpfile:", tmpfil)
         newfil = 0
     else :
         newfil = fil
@@ -103,7 +105,7 @@ for argp in range(argp, len(sys.argv)) :
 
     # See if we're in newfil mode and it's already there
     if not overwrite and newfil == 0 and os.access(tmpfil, os.R_OK) :
-        print tmpfil, "already exists: skipping"
+        print(tmpfil, "already exists: skipping")
         continue
 
     # netpbm, scaling
@@ -121,13 +123,13 @@ for argp in range(argp, len(sys.argv)) :
 
     # For any of the other modes, we need to know the file size.
     sx, sy = read_imagesize(fil)
-    print fil, ":", sx, "x", sy,
+    print(fil, ":", sx, "x", sy, end='')
 
     if imageMagick and doscale :
-        print ""
+        print()
         newsx = int(sx * scale)
         newsy = int(sy * scale)
-        geom = `newsx` + "x" + `newsy`
+        geom = '%dx%d' % (newsx, newsy)
         if sx > sy :
             max = sx
         else :
@@ -135,22 +137,22 @@ for argp in range(argp, len(sys.argv)) :
 
     # Else not image magick or not doscale
     elif sx > sy :
-        print " (horizontal)"
+        print(" (horizontal)")
         if imageMagick :
             geom = str(scale)
         else :
             flag = "-xsize"
         max = sx
     else :
-        print " (vertical)"
+        print(" (vertical)")
         if imageMagick :
-            geom = "x" + `scale`
+            geom = "x%d" % scale
         else :
             flag = "-ysize"
         max = sy
 
     if dontshrink and (scale > max) :
-        print " (Already smaller than scale.)"
+        print(" (Already smaller than scale.)")
         continue
 
     # Now finally build and execute the command
@@ -161,7 +163,7 @@ for argp in range(argp, len(sys.argv)) :
         # It seems that -size can only resize by clean multiples of image size,
         # whereas -scale can go to any size?
         flag = "-scale"
-        print "Running: convert -quality 83 -scale " + geom + " " + fil + " " + tmpfil
+        print("Running: convert -quality 83 -scale " + geom + " " + fil + " " + tmpfil)
         # Add -quality nn if desired -- should add that as a flag.
         status = os.system("convert -quality 83 -scale " + geom + " " \
                            + fil + " " + tmpfil)
@@ -173,7 +175,7 @@ for argp in range(argp, len(sys.argv)) :
     # Clean up if the command was successful
     if status == 0 :
         if newfil != 0:
-            print "Renaming", tmpfil, "to", newfil
+            print("Renaming", tmpfil, "to", newfil)
             os.rename(tmpfil, newfil)
 
         # Add an optional dropshadow:
@@ -181,7 +183,7 @@ for argp in range(argp, len(sys.argv)) :
             if newfil == 0 :
                 newfil = tmpfil
             thumbfil = "thumb" + fil[period:]
-            print "Making dropshadow ... thumb file is", thumbfil
+            print("Making dropshadow ... thumb file is", thumbfil)
             status = os.system("convert -depth 8 -threshold -1 -negate " \
                                + newfil \
                                + " -bordercolor white -border 20x20 " \

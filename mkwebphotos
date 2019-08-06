@@ -4,6 +4,8 @@
 # If there are images in the current directory, make a single web page;
 # if there are subdirectories, make a hierarchy of them.
 
+from __future__ import print_function
+
 import os, sys
 import subprocess
 import shutil
@@ -25,13 +27,14 @@ tags = {}
 #                              os.path.join(os.path.dirname(__file__),
 #                                           "mkphplist")).load_module()
 
-from importlib.util import spec_from_loader, module_from_spec
-from importlib.machinery import SourceFileLoader
-mkphppath = os.path.join(os.path.dirname(__file__), "mkphplist")
+# from importlib.util import spec_from_loader, module_from_spec
+# from importlib.machinery import SourceFileLoader
+# mkphppath = os.path.join(os.path.dirname(__file__), "mkphplist")
 
-spec = spec_from_loader("mkphplist", SourceFileLoader("mkphplist", mkphppath))
-mkphplist = module_from_spec(spec)
-spec.loader.exec_module(mkphplist)
+# spec = spec_from_loader("mkphplist", SourceFileLoader("mkphplist", mkphppath))
+# mkphplist = module_from_spec(spec)
+# spec.loader.exec_module(mkphplist)
+import mkphplist
 
 def is_image_file(f):
     '''Does this file have an image extension, and it's not a thumbnail,

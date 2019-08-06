@@ -5,6 +5,8 @@
 # Copyright 2004 by Akkana Peck.
 # You may use and distribute this under the GPL.
 
+from __future__ import print_function
+
 import sys, os
 import subprocess
 import re

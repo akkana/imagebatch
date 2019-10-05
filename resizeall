@@ -34,9 +34,19 @@ overwrite = 0
 imageMagick = 1
 
 def read_imagesize(fil):
-    proc = subprocess.Popen(["identify", fil],
-                            shell=False, stdout=subprocess.PIPE)
-    size = proc.communicate()[0].split()[2]
+    try:
+        proc = subprocess.Popen(["identify", fil],
+                                shell=False, stdout=subprocess.PIPE)
+        size = proc.communicate()[0].split()[2]
+    except OSError:
+        print("Please install ImageMagick or GraphicsMagick, "
+              "including the 'identify' command")
+        sys.exit(1)
+
+    # GraphicsMagick returns something like 3648x2736+0+0 where ImageMagick
+    # returns just the size. Split off anything past +.
+    size = size.split(b'+')[0]
+
     return map(int, size.split(b'x'))
 
 def Usage() :

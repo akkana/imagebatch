@@ -46,7 +46,7 @@ def getthumbsize(imgname, root=None):
         #     return 0, 0
         # sizes = s.split()[2].split(b"x")
 
-        print("sizes", sizes, "thumbsizes", thumbsizes)
+        # print("sizes", sizes, "thumbsizes", thumbsizes)
         return thumbsizes[0], thumbsizes[1], sizes[0], sizes[1]
 
     except Exception as e:

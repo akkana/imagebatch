@@ -38,41 +38,48 @@ while ($#argv >= 1)
         # Unfortunately jpegexiforient is broken in karmic (bug 482443)
         # so use jhead instead, if available.
         if ($?havejhead) then
-            jhead -norot $argv[1]
+            jhead -norot "$argv[1]"
         else if ($?havejpegexiforient) then
-            jpegexiforient -1 $argv[1]
+            jpegexiforient -1 "$argv[1]"
             echo "No jhead; might not have reset exif orientation"
         endif
 
+        echo 111
+
         if ($degrees != 0) then
-            set tmp=${argv[1]}.rotateall
-            echo rotate $argv[1] $degrees
-    	if ($argv[1] =~ *.jpg || $argv[1] =~ *.JPG) then
-            if (! $?havejpegtran) then
-                echo $argv[1] "is JPEG but don't have jpegtran; chickening out"
-                shift
-                continue
+            echo 222
+            set tmp="${argv[1]}.rotateall"
+            echo rotate "$argv[1]" $degrees
+
+            if ("$argv[1]" =~ *.jpg || "$argv[1]" =~ *.JPG) then
+                echo 333
+                if (! $?havejpegtran) then
+                    echo $argv[1] "is JPEG but don't have jpegtran; chickening out"
+                    shift
+                    continue
+                endif
+                echo "$argv[1] is a jpeg; using jpegtran"
+                jpegtran -rot $degrees -copy all "$argv[1]" >"$tmp"
+                if ($status != 0) then
+                    echo "Couldn't run jpegtran"
+                    rm "$tmp"
+                    exit 1
+                endif
+            else if ($?haveconvert) then
+                echo 444
+                convert -rotate $degrees "$argv[1]" $tmp
+                if ($status != 0) then
+                    echo "Couldn't run jpegtran"
+                    rm $foo
+                    exit 1
+                endif
+            else
+                echo "Can't use either convert or jpegtran"
             endif
-  	    echo "$argv[1] is a jpeg; using jpegtran"
-    	    jpegtran -rot $degrees -copy all $argv[1] >$tmp
-            if ($status != 0) then
-                echo "Couldn't run jpegtran"
-                rm $tmp
-                exit 1
-            endif
-      	else if ($?haveconvert) then
-            convert -rotate $degrees $argv[1] $tmp
-            if ($status != 0) then
-                echo "Couldn't run jpegtran"
-                rm $foo
-                exit 1
-            endif
-        else
-            echo "Can't use either convert or jpegtran"
-    	endif
 
             # and finally, move the file into place:
-            mv $tmp $argv[1]
+            echo 555
+            mv "$tmp" "$argv[1]"
         endif
     endif
 

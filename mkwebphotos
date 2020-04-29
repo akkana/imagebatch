@@ -310,6 +310,26 @@ def make_web_photos_onelevel(orig_path, web_dir, title):
         print("Yikes, nothing to write!")
 
 if __name__ == '__main__':
+    use_one_index = None
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '-' or sys.argv[1] == '--help':
+            print("Usage: %s [-1|-m] [file list]"
+                  % os.path.basename(sys.argv[0]))
+            print("    -1: use a single index at the top level")
+            print("    -m: use multiple levels each with its own index")
+            print("Specifying filenames implies -1; "
+                  "otherwise, will try to guess")
+            sys.exit(0)
+
+        if sys.argv[1] == '-1':
+            use_one_index = True
+        elif sys.argv[1] == '-m':
+            use_one_index = False
+
+        files = sys.argv[1:]
+    else:
+        files = None
+
     orig_path = '.'   # XXX Some day make this a commandline argument
     web_dir = os.path.normpath(os.path.join(orig_path, 'web'))
     if not os.path.exists(web_dir):
@@ -326,31 +346,49 @@ if __name__ == '__main__':
     # or we can have one index.php at the top which indexes
     # all images underneath (for e.g. a website with an images/ dir).
     #
-    # We'll default to the first model, but in a case where there's
+    # If the user specified a file list, assume the single index model.
+    #
+    # Otherwise, default to the multilevel model, but in a case where there's
     # already an index.php at the top level but not in any subdirectories,
-    # the user probably wants the other model, so give it to them.
-    # Here's where we detect that:
-    if os.path.exists(os.path.join(orig_path, "index.php")):
-        use_one_index = False
-        for root, dirs, files in os.walk(orig_path, topdown=False):
-            if not use_one_index:
-                for dir in dirs:
-                    if os.path.exists(os.path.join(root, dir, "index.php")):
-                        use_one_index = True
-                        break
-    else:
-        use_one_index = True
-        for root, dirs, files in os.walk(orig_path):
-            if root != orig_path:
-                for f in files:
-                    if is_image_file(f):
-                        use_one_index = False
-                        print("Found an image in a subdir!", root, f)
-                        break
-                print("No image files in", root)
-                if not use_one_index:
-                    break
-        print("Use one index?", use_one_index)
+    # the user probably wants a single index, so give it to them.
+    # Here's where we detect that, if use_one_index isn't already
+    # set to either True or False:
+
+    def check_subdirs(rootdir):
+        '''First return: Are there any subdirectories of the root containing
+           a file index.php?
+           Second return: Are there any subdirectories containing image files?
+        '''
+        dirs_with_index = False
+        dirs_with_image = False
+        for root, dirs, files in os.walk(rootdir, topdown=False):
+            if root == rootdir:
+                continue
+            for f in files:
+                if f == 'index.php':
+                    dirs_with_index = True
+                if is_image_file(f):
+                    dirs_with_image = True
+
+                if dirs_with_index and dirs_with_image:
+                    return dirs_with_index, dirs_with_image
+
+        return dirs_with_index, dirs_with_image
+
+    if use_one_index == None:
+        subdir_index, subdir_images = check_subdirs(orig_path)
+
+        if not subdir_images:
+            use_one_index = True
+        elif subdir_images:
+            if os.path.exists(os.path.join(orig_path, "index.php")) \
+               and not subdir_index:
+                use_one_index = True
+            else:
+                use_one_index = False
+        else:
+            use_one_index = True
+
 
     if use_one_index:
         make_web_photos_onelevel(orig_path, web_dir, toptitle)

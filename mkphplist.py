@@ -11,42 +11,38 @@ import sys, os
 import subprocess
 import re
 
-# Try to get an image's and thumbnail size.
+# Try to get an image's size and thumbnail size.
 # Return thumbwidth, thumbheight, width, height as strings.
 def getthumbsize(imgname, root=None):
     sys.stdout.flush()
     if root:
         imgname = os.path.join(root, imgname)
-    try:
-        # Try for the real image size first:
-        proc = subprocess.Popen(["identify", imgname],
+
+    def sizes_from_identify(filename):
+        proc = subprocess.Popen(["identify", filename],
                                 shell=False, stdout=subprocess.PIPE)
         s = proc.communicate()[0]
         if s:
-            sizes = [ x.decode() for x in s.split()[2].split(b"x") ]
-        else:
-            sizes = [0, 0]
+            # Sometimes identify's output looks like
+            # foo.jpg JPEG 900x718 900x718+0+0 ...
+            # but on ubunu 20.04, even with the same 8:6.9.10.23 version, it's
+            # foo.jpg JPEG 900x718+0+0 ...
+            # so try to be alert for that difference.
+            ws, hs = s.decode().split()[2].split("x")
+            if '+' in hs:
+                hs = hs.split('+')[0]
+            return [ ws, hs ]
+
+        return [0, 0]
+
+    try:
+        # Try for the real image size first:
+        sizes = sizes_from_identify(imgname)
 
         # Now the thumbnail size:
         parts = os.path.splitext(imgname)
-        proc = subprocess.Popen(["identify", parts[0] + "T" + parts[1]],
-                                shell=False, stdout=subprocess.PIPE)
-        s = proc.communicate()[0]
-        if s:
-            thumbsizes = [ x.decode() for x in s.split()[2].split(b"x") ]
-        else:
-            thumbsizes = [0, 0]
+        thumbsizes = sizes_from_identify(parts[0] + "T" + parts[1])
 
-        # # Get the thumbnail name
-        # parts = os.path.splitext(imgname)
-        # fp = os.popen("identify " + parts[0] + "T" + parts[1])
-        # s = fp.readline()
-        # fp.close()
-        # if not s:
-        #     return 0, 0
-        # sizes = s.split()[2].split(b"x")
-
-        # print("sizes", sizes, "thumbsizes", thumbsizes)
         return thumbsizes[0], thumbsizes[1], sizes[0], sizes[1]
 
     except Exception as e:

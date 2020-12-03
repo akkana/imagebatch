@@ -72,7 +72,8 @@ def mkline(imgname, pixlist, root=None):
     if img:
         tw, th, w, h = getthumbsize(imgname, root)
         if [tw, th, w, h] != img[2:]:
-            print("Need to correct sizes:", tw, th, w, h, "vs", img[2:])
+            print(imgname, ": Need to correct sizes:", tw, th, w, h,
+                  "vs", img[2:])
             img[2:] = [tw, th, w, h]
         else:
             print("Skipping", imgname)

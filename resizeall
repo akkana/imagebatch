@@ -1,212 +1,135 @@
 #!/usr/bin/env python
 
 # resizeall: batch-resize images.
-# Copyright 2001, 2002 by Akkana Peck.
+# Copyright 2020 by Akkana Peck.
 # You may use, distribute and modify this program under the terms of the GPL.
 # Edited by Nick Hill, July 2003 to add support for spaces in filenames.
 
-#
-# TODO: ImageMagick has greatly improved its arguments,
-# and a lot of this script is no longer needed. For example:
-# - use mogrify instead of convert, no need for temp file and renaming
-# - -geometry 200x200 preserves aspect ratio oow
-# - -geometry '>200x200' preserves aspect ratio and doesn't enlarge
-#
-
 from __future__ import print_function
 
-import sys, string, os, re
-# , os.path
+import sys, os
 import subprocess
+import argparse
+from PIL import Image, ImageFilter
 
-scale = .5
-doscale = 1
-dontshrink = 1
-thumbnail = 0
-dropshadow = 0
 
-# Overwrite existing files?  (If we're making new files, e.g. thumbnail mode)
-overwrite = 0
+def resize_file(filename, outfile, size, scale, dropshadow, force):
+    # Get the image size. GEGL can't do this even if it's used for the resize.
+    img = Image.open(filename)
 
-# Use imageMagick, or netpbm?
-# XXX Should test for existence of convert vs. djpeg programs!
-# Or, of course, use the python bindings.
-imageMagick = 1
+    if outfile != filename and not force:
+        if os.path.exists(outfile):
+            print("Not overwriting", outfile)
+            return
 
-def read_imagesize(fil):
+    if size:                         # Size of long dimension specified
+        if img.width >= img.height:  # landscape
+            new_width = size
+            new_height = img.height * size / img.width
+        else:                        # portrait
+            new_height = size
+            new_width = img.width * size / img.height
+    else:                            # scale, aspect will take care of itself
+        new_width = img.width * scale
+        new_height = img.height * scale
+
+    new_width = int(new_width)
+    new_height = int(new_height)
+
+    if not new_width or not new_height:
+        raise(RuntimeError("Couldn't calculate new dimensions for " + filename
+                           + f": current size {img.width}x{img.height}"))
+    print("Rescaling", filename, "to", new_width, new_height)
+
+    scaled = img.resize((new_width, new_height),
+                        resample=Image.LANCZOS)
+    if dropshadow:
+        scaled = make_dropshadow(scaled)
+
+    # Preserve the original EXIF when saving.
     try:
-        proc = subprocess.Popen(["identify", fil],
-                                shell=False, stdout=subprocess.PIPE)
-        size = proc.communicate()[0].split()[2]
-    except OSError:
-        print("Please install ImageMagick or GraphicsMagick, "
-              "including the 'identify' command")
+        exifinfo = img.info['exif']
+        scaled.save(outfile, exif=exifinfo)
+    except:
+        scaled.save(outfile)
+    print("Saved", outfile)
+
+
+def make_dropshadow(image, iterations=7, border=0, offset=(7, 7),
+                    background_color=0xffffff, shadow_color=0x444444):
+    """Return an image with a drop shadow added.
+       image: input imate
+       iterations: how many times to run the blur filter'
+       border: ??
+       offset: (x, y) offset of the shadow
+    """
+    # Calculate the size of the shadow's image
+    fullWidth  = image.size[0] + abs(offset[0]) + 2*border
+    fullHeight = image.size[1] + abs(offset[1]) + 2*border
+
+    #Create the shadow's image. Match the parent image's mode.
+    shadow = Image.new(image.mode, (fullWidth, fullHeight), background_color)
+
+    # Place the shadow, with the required offset
+    shadowLeft = border + max(offset[0], 0) #if <0, push the rest of the image right
+    shadowTop  = border + max(offset[1], 0) #if <0, push the rest of the image down
+    # Paste in the constant colour
+    shadow.paste(shadow_color,
+                 [shadowLeft, shadowTop,
+                  shadowLeft + image.size[0],
+                  shadowTop  + image.size[1] ])
+
+    # Apply the BLUR filter repeatedly
+    for i in range(iterations):
+        shadow = shadow.filter(ImageFilter.BLUR)
+
+    # Paste the original image on top of the shadow
+    imgLeft = border - min(offset[0], 0) #if the shadow offset was <0, push right
+    imgTop  = border - min(offset[1], 0) #if the shadow offset was <0, push down
+    shadow.paste(image, (imgLeft, imgTop))
+
+    return shadow
+
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Batch-resize files")
+    parser.add_argument("--size", dest="size", type=int, action="store",
+                        help="New size of long dimension")
+    parser.add_argument("--scale", dest="scale", type=float, action="store",
+                        help="Scale, e.g. 2 or .5")
+    parser.add_argument('-t', "--thumbnail", dest="thumbnail", default=False,
+                        action="store_true",
+                        help="Make thumbnails: size 200, default dropshadow")
+    parser.add_argument('-n', "--nodrop", dest="nodrop", default=False,
+                        action="store_true",
+                        help="Omit shadows when making thumbnails")
+    parser.add_argument('-f', "--force", dest="force", default=False,
+                        action="store_true",
+                        help="Force: overwrite even when called as mkthumb")
+    parser.add_argument('files', nargs='+', help="Image files to resize")
+    args = parser.parse_args(sys.argv[1:])
+
+    if os.path.basename(sys.argv[0]).startswith("mkthumb"):
+        args.thumbnail = True
+    if args.thumbnail:
+        dropshadow = not args.nodrop
+        if not args.size:
+            args.size = 200
+    else:
+        dropshadow = False
+
+    if not args.size and not args.scale:
+        print("\nYou must specify either --size or --scale")
+        parser.print_help()
         sys.exit(1)
 
-    # GraphicsMagick returns something like 3648x2736+0+0 where ImageMagick
-    # returns just the size. Split off anything past +.
-    size = size.split(b'+')[0]
+    for f in args.files:
+        if args.thumbnail:
+            path, ext = os.path.splitext(f)
+            outfilename = path + 'T' + ext
+        else:
+            outfilename = f
 
-    return map(int, size.split(b'x'))
-
-def Usage() :
-    print("Usage:", sys.argv[0], "[-magick|nomagick] [-nodrop] [-force] [-size|-scale size|scale]")
-    sys.exit(1)
-
-# Are we in thumbnail mode?
-if os.path.basename(sys.argv[0])[0:7] == "mkthumb" :
-    thumbnail = 1
-    dropshadow = 1
-    doscale = 0
-    scale = 200
-
-if len(sys.argv) <= 1 :
-    Usage()
-
-argp = 1
-while argp < len(sys.argv) and sys.argv[argp][0:1] == "-" :
-    if sys.argv[argp] == "-scale" :
-        doscale = 1
-        scale = float(sys.argv[argp+1])
-        print("New scale will be", scale)
-        argp = argp + 2
-
-    elif sys.argv[argp] == "-size" :
-        doscale = 0
-        scale = int(sys.argv[argp+1])
-        print("New size will be", scale)
-        argp = argp + 2
-    elif sys.argv[argp] == "-magick" :
-        imageMagick = 1
-        argp = argp + 1
-
-    elif sys.argv[argp] == "-nomagick" :
-        imageMagick = 0
-        argp = argp + 1
-
-    elif sys.argv[argp] == "-nodrop" :
-        dropshadow = 0
-        argp = argp + 1
-
-    elif sys.argv[argp] == "-force" :
-        overwrite = 1
-        argp = argp + 1
-
-    else :
-        Usage()
-
-for argp in range(argp, len(sys.argv)) :
-    fil = sys.argv[argp]
-    p = re.compile(' ')
-    fil = p.sub('\ ', fil)
-
-    # Set up filenames
-    period = fil.rfind(".")
-    if (period < 0) :
-        print(fil, "has no extension!")
-        continue
-    if thumbnail :
-        tmpfil = fil[0:period] + "T" + fil[period:]
-        print("tmpfile:", tmpfil)
-        newfil = 0
-    else :
-        newfil = fil
-        tmpfil = fil + ".temp"
-
-    # See if we're in newfil mode and it's already there
-    if not overwrite and newfil == 0 and os.access(tmpfil, os.R_OK) :
-        print(tmpfil, "already exists: skipping")
-        continue
-
-    # netpbm, scaling
-    # Thanks to Mojo for pointing me to djpeg and pnmscale!
-    if (not imageMagick) and doscale :
-        status = os.system("djpeg " + fil + \
-                         " | pnmscale -xscale .5 -yscale .5 | cjpeg > " \
-                           + tmpfil)
-        if status != 0 or os.path.getsize(fil) :
-            os.remove(tmpfil)
-        elif newfil != 0 :
-            os.rename(tmpfil, newfil)
-
-        continue
-
-    # For any of the other modes, we need to know the file size.
-    sx, sy = read_imagesize(fil)
-    print(fil, ":", sx, "x", sy, end='')
-
-    if imageMagick and doscale :
-        print()
-        newsx = int(sx * scale)
-        newsy = int(sy * scale)
-        geom = '%dx%d' % (newsx, newsy)
-        if sx > sy :
-            max = sx
-        else :
-            max = sy
-
-    # Else not image magick or not doscale
-    elif sx > sy :
-        print(" (horizontal)")
-        if imageMagick :
-            geom = str(scale)
-        else :
-            flag = "-xsize"
-        max = sx
-    else :
-        print(" (vertical)")
-        if imageMagick :
-            geom = "x%d" % scale
-        else :
-            flag = "-ysize"
-        max = sy
-
-    if dontshrink and (scale > max) :
-        print(" (Already smaller than scale.)")
-        continue
-
-    # Now finally build and execute the command
-    if imageMagick :
-        # For reasons I don't understand and man convert doesn't explain,
-        # in the doscale case we have to use -scale (which takes twice
-        # as long as -size) because -size gives the wrong answer.
-        # It seems that -size can only resize by clean multiples of image size,
-        # whereas -scale can go to any size?
-        flag = "-scale"
-        print("Running: convert -quality 83 -scale " + geom + " " + fil + " " + tmpfil)
-        # Add -quality nn if desired -- should add that as a flag.
-        status = os.system("convert -quality 83 -scale " + geom + " " \
-                           + fil + " " + tmpfil)
-        status = 0
-    else :
-        status = os.system("djpeg " + fil + " | pnmscale " + flag \
-                           + " " + scale + " | cjpeg > " + tmpfil)
-
-    # Clean up if the command was successful
-    if status == 0 :
-        if newfil != 0:
-            print("Renaming", tmpfil, "to", newfil)
-            os.rename(tmpfil, newfil)
-
-        # Add an optional dropshadow:
-        if dropshadow :
-            if newfil == 0 :
-                newfil = tmpfil
-            thumbfil = "thumb" + fil[period:]
-            print("Making dropshadow ... thumb file is", thumbfil)
-            status = os.system("convert -depth 8 -threshold -1 -negate " \
-                               + newfil \
-                               + " -bordercolor white -border 20x20 " \
-                               + "-gaussian 3x3 -shave 15x15 - " \
-                               + "| composite -gravity northwest "\
-                               + "-compose src-over " \
-                               + newfil + " - " + thumbfil)
-            if status == 0 :
-                os.rename(thumbfil, newfil)
-
-    # Otherwise go back to the original
-    else :
-        os.remove(tmpfil)
-
-    # End for loop over files
-
+        resize_file(f, outfilename, args.size, args.scale,
+                    dropshadow, args.force)

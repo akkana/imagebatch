@@ -9,7 +9,7 @@
 ############################################################################
 # imgsize: prints the width and height of its first argument.
 ############################################################################
-# 
+#
 # this program by (and copyright) Akkana Peck, akkana@shallowsky.com,
 # based on the excellent wwwis, by Alex Knowles, alex@ed.ac.uk
 # see http://www.tardis.ed.ac.uk/~ark/wwwis/
@@ -53,7 +53,7 @@ while (@ARGV) {
 
 # looking at the filename really sucks I should be using the first 4 bytes
 # of the image. If I ever do it these are the numbers.... (from chris@w3.org)
-#  PNG 89 50 4e 47    
+#  PNG 89 50 4e 47
 #  GIF 47 49 46 38
 #  JPG ff d8 ff e0
 #  XBM 23 64 65 66
@@ -61,7 +61,7 @@ sub imgsize {
   my($file)= shift @_;
   my($ref)=@_ ? shift @_ : "";
   my($x,$y)=(0,0);
-  
+
   # first check the hash table (if we use one)
   # then try and open the file
   # then try the server if we know of one
@@ -79,20 +79,20 @@ sub imgsize {
       print "$file is not gif, xbm, jpeg or png (or has stupid name)";
     }
     close(STRM);
-    
+
   } else {
     # we couldn't open the file maybe we want to try the server?
-    
+
     if(defined($ref) &&
        $ref =~ /\S+/ &&
        $Base =~ /\S+/ ){
       $ref= &ARKjoinURL( $Base, $ref );
       print "Trying server for $ref\n" if $debug;
-      
+
       ($x,$y)=&URLsize($ref);
     }
   }
-      
+
   return ($x,$y);
 }
 
@@ -129,7 +129,7 @@ sub gif_blockskip {
   my ($GIF, $skip, $type) = @_;
   my ($s)=0;
   my ($dummy)='';
-  
+
   read ($GIF, $dummy, $skip);	# Skip header (if any)
   while (1) {
     if (eof ($GIF)) {
@@ -138,7 +138,7 @@ sub gif_blockskip {
     }
     read($GIF, $s, 1);		# Block size
     last if ord($s) == 0;	# Block terminator
-    read ($GIF, $dummy, ord($s));	# Skip data    
+    read ($GIF, $dummy, ord($s));	# Skip data
   }
 }
 
@@ -149,12 +149,12 @@ sub NEWgifsize {
   my($type,$s)=(0,0);
   my($x,$y)=(0,0);
   my($dummy)='';
-  
+
   return($x,$y) if(!defined $GIF);
-  
-  read($GIF, $type, 6); 
+
+  read($GIF, $type, 6);
   if($type !~ /GIF8[7,9]a/ || read($GIF, $s, 7) != 7 ){
-    warn "Invalid/Corrupted GIF (bad header)\n"; 
+    warn "Invalid/Corrupted GIF (bad header)\n";
     return($x,$y);
   }
   ($e)=unpack("x4 C",$s);
@@ -219,7 +219,7 @@ sub NEWgifsize {
 sub xbmsize {
   my($XBM) = @_;
   my($input)="";
-  
+
   if( defined( $XBM ) ){
     $input .= <$XBM>;
     $input .= <$XBM>;
@@ -241,7 +241,7 @@ sub pngsize {
 # my($x,$y);
   my($a, $b, $c, $d, $e, $f, $g, $h)=0;
 
-  if(defined($PNG)				&& 
+  if(defined($PNG)				&&
      read( $PNG, $head, 8 ) == 8		&&
      $head eq "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a" &&
      read($PNG, $head, 4) == 4			&&
@@ -264,11 +264,11 @@ sub jpegsize {
   my($done)=0;
   my($c1,$c2,$ch,$s,$length, $dummy)=(0,0,0,0,0,0);
   my($a,$b,$c,$d);
-  
+
   if(defined($JPEG)		&&
      read($JPEG, $c1, 1)	&&
      read($JPEG, $c2, 1)	&&
-     ord($c1) == 0xFF		&& 
+     ord($c1) == 0xFF		&&
      ord($c2) == 0xD8		){
     while (ord($ch) != 0xDA && !$done) {
       # Find next marker (JPEG markers begin with 0xFF)
@@ -278,15 +278,15 @@ sub jpegsize {
       while (ord($ch) == 0xFF) { return(0,0) unless read($JPEG, $ch, 1); }
       # Now, $ch contains the value of the marker.
       if ((ord($ch) >= 0xC0) && (ord($ch) <= 0xC3)) {
-	return(0,0) unless read ($JPEG, $dummy, 3); 
+	return(0,0) unless read ($JPEG, $dummy, 3);
 	return(0,0) unless read($JPEG, $s, 4);
 	($a,$b,$c,$d)=unpack("C"x4,$s);
 	return ($c<<8|$d, $a<<8|$b );
       } else {
 	# We **MUST** skip variables, since FF's within variable names are
 	# NOT valid JPEG markers
-	return(0,0) unless read ($JPEG, $s, 2); 
-	($c1, $c2) = unpack("C"x2,$s); 
+	return(0,0) unless read ($JPEG, $s, 2);
+	($c1, $c2) = unpack("C"x2,$s);
 	$length = $c1<<8|$c2;
 	last if (!defined($length) || $length < 2);
 	read($JPEG, $dummy, $length-2);
@@ -302,26 +302,26 @@ sub jpegsize {
 sub URLsize {
   my($five) = @_;
   my($dummy, $server, $url);
-  
+
   my( $x,$y) = (0,0);
-  
+
   print "URLsize: $five\n" if $debug;
-  
+
   ($dummy, $dummy, $server, $url) = split(/\//, $five, 4);
   $url= '/' . $url;
-  
+
   my($them,$port) = split(/:/, $server);
   my( $iaddr, $paddr, $proto );
-  
+
   $port = 80 unless $port;
   $them = 'localhost' unless $them;
-  
+
   print "\nThey are $them on port $port\n" if $debug;# && $Proxy;
   print "url is $url\n" 		   if $debug;
-  
+
   $_=$url;
   if( /gif/i || /jpeg/i || /jpg/i || /xbm/i ){
-    
+
     $iaddr= inet_aton( $them );
     $paddr= sockaddr_in( $port, $iaddr );
     $proto=getprotobyname('tcp');
@@ -332,11 +332,11 @@ sub URLsize {
        connect(STRM,$paddr) ){
       # Set socket to be command buffered.
       select(STRM); $| = 1; select(STDOUT);
-      
+
       print "Getting $url\n" if $debug;
-      
+
       print STRM "GET $url\n\n";
-      
+
       if ($url =~ /\.jpg$/i || $url =~ /\.jpeg$/i) {
 	($x,$y) = &jpegsize(\*STRM);
       } elsif($url =~ /\.gif$/i) {
@@ -347,7 +347,7 @@ sub URLsize {
 	($x,$y) = &pngsize(\*STRM);
       } else {
 	print "$url is not gif, jpeg, xbm or png (or has stupid name)";
-      }		
+      }
       close ( STRM );
     } else {
       # there was a problem
@@ -360,15 +360,15 @@ sub URLsize {
 }
 
 sub istrue
-{ 
-  my( $val)=@_;  
+{
+  my( $val)=@_;
   return (defined($val) && ($val =~ /^y(es)?/i || $val =~ /true/i ));
 }
 
 sub isfalse
 {
-  my( $val)=@_;  
-  return (defined($val) && ($val =~ /^no?/i || $val =~ /false/i )); 
+  my( $val)=@_;
+  return (defined($val) && ($val =~ /^no?/i || $val =~ /false/i ));
 }
 
 # joins together two URLS to make one url
@@ -378,18 +378,18 @@ sub isfalse
 sub ARKjoinURL
 {
   my($base,$url)=@_;
-  
+
   # if url has a double // in it then it is fine thank you!
   return $url if( $url =~ /\/\// );
-  
+
   # strip down base url to make sure that it doesn't have a .html at the end
   $base=~s/[^\/]*$//;
-  
+
   if( $url =~ /^\// ){
     # strip off leading directories
     $base =~ s/(\/\/[^\/]*)\/.*$/$1/;
   }
-  
+
   return ($base . $url);
 }
 

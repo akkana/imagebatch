@@ -34,7 +34,7 @@ Here's a typical quickie workflow:
     have an EXIF rotation tag, e.g.
     ```rotateall -right img004.jpg img007.jpg -left img011.jpg```
 -   Resize everything to a reasonable size for the web, e.g.
-    ```resizeall -size 1024 *.jpg```
+    ```resizeall --size 1024 *.jpg```
 -   Run mkwebphotos, which does the rest.
 -   View the *index.php* you've just made in a browser and open it in
     an editor. Edit the page title and image descriptions as needed.

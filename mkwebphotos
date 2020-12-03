@@ -11,6 +11,8 @@ import subprocess
 import shutil
 from PIL import Image
 
+import jpegautorot
+
 # Directories in which we'll ignore images:
 SPECIALDIRS = [ 'web', 'fullsize', 'orig', 'css', '.git', 'icons', 'tmp' ]
 
@@ -187,15 +189,25 @@ def handle_files(root, file_list, webpath=None, title=None):
                 # Only run exiftran, jhead and mogrify if we're copying.
                 # Don't risk modifying original images in unreversible ways.
                 # In particular, exiftran and jhead don't play well together.
-                # Calling jhead on a file that exiftran and jhead have 
+                # Calling jhead on a file that exiftran and jhead have
                 # previously been called on produces the Nonfatal Error :
-                # "More than 10 date fields!  This is nuts"
+                # "More than 10 date fields!  This is nuts".
+                # jhead also doesn't much like the output of Pillow,
+                # used by jpegautorot.
                 print("Running exiftran, jhead, mogrify on", fpath)
-                subprocess.call(["exiftran", "-a", "-i", fpath])
+
+                # exiftran doesn't work any more, on images that have
+                # been resized via imagemagick or pillow.
+                # subprocess.call(["exiftran", "-a", "-i", fpath])
+                # So instead, use a homegrown solution based on Pillow:
+                print("autorotating %s with jpegautorot" % fpath)
+                jpegautorot.autorotate(fpath, fpath)
+
                 subprocess.call(["jhead", "-dt", "-norot", fpath])
 
-                subprocess.call(["mogrify", "-quality", "83",
-                                 "-scale", "600^>", fpath])
+                # I don't even know why this mogrify call was here.
+                # subprocess.call(["mogrify", "-quality", "83",
+                #                  "-scale", "600^>", fpath])
 
                 os.chmod(fpath, 0o644)
         else:
@@ -211,7 +223,7 @@ def handle_files(root, file_list, webpath=None, title=None):
         if not os.path.exists(thumb):
             # First make sure it's not rotated:
             subprocess.call(["exiftran", "-a", "-i", fpath])
-            subprocess.call(["mkthumb", "-size", "200", fpath])
+            subprocess.call(["mkthumb", "--size", "200", fpath])
 
     if not title:
         title = get_title_for_dir(root)

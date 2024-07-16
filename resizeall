@@ -42,7 +42,7 @@ def resize_file(filename, outfile, size, scale, dropshadow, force):
     print("Rescaling", filename, "to", new_width, new_height)
 
     scaled = img.resize((new_width, new_height),
-                        resample=Image.LANCZOS)
+                        resample=Image.Resampling.LANCZOS)
     if dropshadow:
         scaled = make_dropshadow(scaled)
 

@@ -13,7 +13,8 @@ import argparse
 from PIL import Image, ImageFilter
 
 
-def resize_file(filename, outfile, size, scale, dropshadow, force):
+def resize_file(filename, outfile, size, scale,
+                dropshadow, force, preserve_exif=True):
     # Get the image size. GEGL can't do this even if it's used for the resize.
     img = Image.open(filename)
 
@@ -36,6 +37,10 @@ def resize_file(filename, outfile, size, scale, dropshadow, force):
     new_width = int(new_width)
     new_height = int(new_height)
 
+    if dropshadow:
+        new_width -= 7
+        new_height -= 7
+
     if not new_width or not new_height:
         raise(RuntimeError("Couldn't calculate new dimensions for " + filename
                            + f": current size {img.width}x{img.height}"))
@@ -53,6 +58,8 @@ def resize_file(filename, outfile, size, scale, dropshadow, force):
     except:
         scaled.save(outfile)
     print("Saved", outfile)
+
+    return scaled.width, scaled.height
 
 
 def make_dropshadow(image, iterations=7, border=0, offset=(7, 7),
@@ -124,12 +131,22 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
+    resized_files = []
     for f in args.files:
         if args.thumbnail:
             path, ext = os.path.splitext(f)
             outfilename = path + 'T' + ext
+            preserve_exif = False
         else:
             outfilename = f
+            preserve_exif = True
 
-        resize_file(f, outfilename, args.size, args.scale,
-                    dropshadow, args.force)
+        nw, nh = resize_file(f, outfilename, args.size, args.scale,
+                             dropshadow, args.force, preserve_exif=preserve_exif)
+        if args.thumbnail:
+            resized_files.append((outfilename, nw, nh))
+
+    if resized_files:
+        print("New thumbnail sizes:")
+        for f, w, h in resized_files:
+            print(f'    {f}: {w} x {h}')

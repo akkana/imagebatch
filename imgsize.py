@@ -14,13 +14,18 @@ def get_size(f):
     w = img.width
     h = img.height
 
-    exif = img.getexif()
-    for k in exif:
-        if k == ORIENTATION:
-            if ROTATE_KEYS[exif[k]] == 90 or ROTATE_KEYS[exif[k]] == 270:
-                # Swap w and h
-                w, h = h, w
-            break
+    try:
+        exif = img.getexif()
+        for k in exif:
+            if k == ORIENTATION:
+                if ROTATE_KEYS[exif[k]] == 90 or ROTATE_KEYS[exif[k]] == 270:
+                    # Swap w and h
+                    w, h = h, w
+                break
+    except:
+        # No point in trying to print the PIL exception:
+        # if there's no EXIF there's a KeyError but it just prints as "0"
+        pass
 
     return w, h
 
@@ -30,6 +35,6 @@ if __name__ == '__main__':
         try:
             w, h = get_size(f)
             print("%s -- %d x %d" % (f, w, h))
-        except:
-            print("%s: Can't get size" % f)
+        except Exception as e:
+            print("%s: Can't get size" % f, ":", e)
 

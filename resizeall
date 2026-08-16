@@ -14,7 +14,9 @@ from PIL import Image, ImageFilter
 
 
 def resize_file(filename, outfile, size, scale,
-                dropshadow, force, preserve_exif=True):
+                dropshadow, force,
+                no_enlarging=True,
+                preserve_exif=True, use_smaller_dimension=False):
     # Get the image size. GEGL can't do this even if it's used for the resize.
     img = Image.open(filename)
 
@@ -25,14 +27,29 @@ def resize_file(filename, outfile, size, scale,
 
     if size:                         # Size of long dimension specified
         if img.width >= img.height:  # landscape
-            new_width = size
-            new_height = img.height * size / img.width
+            if use_smaller_dimension:
+                new_height = size
+                new_width = img.width * size / img.height
+            else:
+                new_width = size
+                new_height = img.height * size / img.width
         else:                        # portrait
-            new_height = size
-            new_width = img.width * size / img.height
+            if use_smaller_dimension:
+                new_width = size
+                new_height = img.height * size / img.width
+            else:
+                new_height = size
+                new_width = img.width * size / img.height
     else:                            # scale, aspect will take care of itself
         new_width = img.width * scale
         new_height = img.height * scale
+
+    if no_enlarging and (new_width > img.width or new_height > img.height):
+        raise RuntimeError("%s: Refusing to enlarge %d x %d to %d x %d" % (
+            filename,
+            img.width, img.height,
+            new_width, new_height))
+        return
 
     new_width = int(new_width)
     new_height = int(new_height)
@@ -114,6 +131,13 @@ if __name__ == '__main__':
     parser.add_argument('-f', "--force", dest="force", default=False,
                         action="store_true",
                         help="Force: overwrite even when called as mkthumb")
+    parser.add_argument("--use-smaller-dimension", dest="use_smaller_dimension",
+                        default=False, action="store_true",
+                        help="When specifying size, specify the smaller "
+                             "dimension rather than the larger one")
+    parser.add_argument("--no-enlarging", dest="no_enlarging",
+                        default=True, action="store_true",
+                        help="Refuse to enlarge images")
     parser.add_argument('files', nargs='+', help="Image files to resize")
     args = parser.parse_args(sys.argv[1:])
 
@@ -141,10 +165,16 @@ if __name__ == '__main__':
             outfilename = f
             preserve_exif = True
 
-        nw, nh = resize_file(f, outfilename, args.size, args.scale,
-                             dropshadow, args.force, preserve_exif=preserve_exif)
-        if args.thumbnail:
-            resized_files.append((outfilename, nw, nh))
+        try:
+            nw, nh = resize_file(f, outfilename, args.size, args.scale,
+                                 dropshadow, args.force,
+                                 preserve_exif=preserve_exif,
+                                 no_enlarging=args.no_enlarging,
+                                 use_smaller_dimension=args.use_smaller_dimension)
+            if args.thumbnail:
+                resized_files.append((outfilename, nw, nh))
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
 
     if resized_files:
         print("New thumbnail sizes:")
